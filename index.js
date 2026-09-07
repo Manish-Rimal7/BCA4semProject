@@ -33,7 +33,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/feedback", feedbackRouter);
 
 app.get("/health", (req, res) => {
-  res.status(200).json({success: true, status: "OK", message: "API is running...");
+  res.status(200).json({success: true, status: "OK", message: "API is running..."});
 });
 
 app.listen(env.PORT, () => {
