@@ -32,8 +32,8 @@ app.use("/api/rating", ratingRouter);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/feedback", feedbackRouter);
 
-app.get("/", (req, res) => {
-  res.send("API is running");
+app.get("/health", (req, res) => {
+  res.status(200).json({success: true, status: "OK", message: "API is running...");
 });
 
 app.listen(env.PORT, () => {
