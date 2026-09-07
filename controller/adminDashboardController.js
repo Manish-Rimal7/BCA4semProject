@@ -15,20 +15,31 @@ export const AdminDashboard = async (req, res) => {
 
     const totalRatings = await Rating.countDocuments();
 
-    const recentUsers = await User.find()
+    const allUsers = await User.find()
       .select("-password")
-      .sort({ createdAt: -1 })
-      .limit(5);
+      .sort({ createdAt: -1 });
 
     const recentProducts = await Product.find()
       .sort({ createdAt: -1 })
       .limit(5);
 
+    const pendingProducts = await Product.find({ isApproved: false })
+      .populate("addedBy", "username mail")
+      .sort({ createdAt: -1 });
+
     const recentActivities = await Activity.find()
       .populate("user", "username")
       .populate("product", "productName")
       .sort({ createdAt: -1 })
-      .limit(10);
+      .limit(15);
+
+    // Identify pending products submitted under a category that is not yet in MongoDB
+    const activeCategories = await Category.find({ status: "active" });
+    const dbCatNamesLower = new Set(activeCategories.map((c) => c.name.toLowerCase()));
+
+    const newCategoryAlerts = pendingProducts.filter(
+      (p) => p.productCategory && !dbCatNamesLower.has(p.productCategory.trim().toLowerCase())
+    );
 
     return responseManager.success(
       res,
@@ -40,11 +51,18 @@ export const AdminDashboard = async (req, res) => {
           totalProducts,
           totalCategories,
           totalRatings,
+          pendingApprovals: pendingProducts.length,
+          newCategoryAlertsCount: newCategoryAlerts.length,
         },
 
-        recentUsers,
+        allUsers,
+        recentUsers: allUsers.slice(0, 5),
 
         recentProducts,
+
+        pendingProducts,
+
+        newCategoryAlerts,
 
         recentActivities,
       }

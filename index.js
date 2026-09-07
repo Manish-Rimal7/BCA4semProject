@@ -8,13 +8,21 @@ import dashboardRoutes from "./routes/dashboardRoutes.js";
 import { db } from "./config/db.js";
 import { env } from "./env.js";
 import cartRoutes from "./routes/cartRoutes.js";
+import feedbackRouter from "./routes/feedbackRoute.js";
 await db();
 
 const app = express();
 
 // app.use(crossOriginIsolated)
-app.use(cors());
-app.use(express.json());
+app.use(
+  cors({
+    origin: "*",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+  })
+);
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ limit: "5mb", extended: true }));
 
 app.use("/api", router);
 app.use("/api/products", productsRouter);
@@ -22,6 +30,7 @@ app.use("/api/category", categoryRouter);
 app.use("/api/cart", cartRoutes);
 app.use("/api/rating", ratingRouter);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/feedback", feedbackRouter);
 
 app.get("/", (req, res) => {
   res.send("API is running");

@@ -9,7 +9,7 @@ const categorySchema = new mongoose.Schema({
 
   categoryType: {
     type: String,
-    required: true,
+    default: "General",
   },
 
   status: {

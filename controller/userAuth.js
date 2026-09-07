@@ -32,13 +32,18 @@ export const userLogin = async (req, res) => {
   const { mail, password } = req.body;
 
   try {
-    const existingUser = await user.findOne({ mail });
+    if (!mail || !password) {
+      return responseManager.error(res, 400, "Email and password are required");
+    }
+
+    const cleanMail = typeof mail === "string" ? mail.trim() : mail;
+    const existingUser = await user.findOne({ mail: cleanMail });
     if (!existingUser) {
-      return responseManager.error(res, 409, "unable to find user");
+      return responseManager.error(res, 400, "Invalid email or password");
     }
     const verify = await bcrypt.compare(password, existingUser.password);
     if (!verify) {
-      return responseManager.error(res, 409, "password doesnot match ");
+      return responseManager.error(res, 400, "Invalid email or password");
     }
     const token = jsonwebtoken.sign(
       {
@@ -55,11 +60,54 @@ export const userLogin = async (req, res) => {
         id: existingUser._id,
         username: existingUser.username,
         mail: existingUser.mail,
+        address: existingUser.address,
+        age: existingUser.age,
         role: existingUser.role,
       },
     });
   } catch (error) {
     console.log(error);
     return responseManager.error(res, 409, "invalid credentials");
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  const userId = req.user._id;
+  const { username, address, age, password } = req.body;
+
+  try {
+    const existingUser = await user.findById(userId);
+    if (!existingUser) {
+      return responseManager.error(res, 404, "User not found");
+    }
+
+    if (username && username.trim()) {
+      existingUser.username = username.trim();
+    }
+    if (address && address.trim()) {
+      existingUser.address = address.trim();
+    }
+    if (age !== undefined && age !== null && !isNaN(Number(age))) {
+      existingUser.age = Number(age);
+    }
+    if (password && password.trim()) {
+      existingUser.password = await bcrypt.hash(password.trim(), 10);
+    }
+
+    await existingUser.save();
+
+    return responseManager.success(res, 200, "Profile updated successfully", {
+      user: {
+        id: existingUser._id,
+        username: existingUser.username,
+        mail: existingUser.mail,
+        address: existingUser.address,
+        age: existingUser.age,
+        role: existingUser.role,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return responseManager.error(res, 500, "Server error updating profile");
   }
 };

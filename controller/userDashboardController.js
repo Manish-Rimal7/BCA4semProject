@@ -12,7 +12,9 @@ export const Dashboard = async (req, res) => {
 
     const products = await Product.find({
       addedBy: userId,
-    });
+    })
+      .populate("interestedUsers.user", "username mail")
+      .populate("givenTo", "username mail");
 
     const ratings = await Rating.find({
       user: userId,

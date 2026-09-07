@@ -17,23 +17,32 @@ const productSchema = mongoose.Schema({
     required: true,
   },
 
-  productUseful: {
+  location: {
     type: String,
-    required: true,
   },
 
-  productModel: {
+  condition: {
     type: String,
-    required: true,
   },
 
-  productFeatures: {
+  description: {
     type: String,
-    required: true,
+  },
+  productImage: {
+    type: String,
+  },
+  isApproved: {
+    type: Boolean,
+    default: false,
+  },
+  approvalStatus: {
+    type: String,
+    enum: ["pending", "approved", "rejected"],
+    default: "pending",
   },
   status: {
     type: String,
-    enum: ["available", "booked", "sold"],
+    enum: ["available", "booked", "given", "sold"],
     default: "available",
   },
 
@@ -53,6 +62,29 @@ const productSchema = mongoose.Schema({
     ref: "user",
     required: true,
   },
+
+  givenTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "user",
+    default: null,
+  },
+
+  interestedUsers: [
+    {
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+      },
+      purpose: {
+        type: String,
+        default: "",
+      },
+      interestedAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
 });
 
 export default mongoose.model("products", productSchema);

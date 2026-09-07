@@ -5,7 +5,7 @@ import { makeActivity } from "../services/activityService.js";
 
 export const addRating = async (req, res) => {
   const { UUID } = req.params;
-  const { rating } = req.body;
+  const { rating, comment } = req.body;
 
   if (!UUID) {
     return responseManager.error(res, 400, "UUID not found");
@@ -22,7 +22,9 @@ export const addRating = async (req, res) => {
   }
 
   try {
-    const product = await Product.findOne({ UUID });
+    const isObjectId = UUID.match(/^[0-9a-fA-F]{24}$/);
+    const filter = isObjectId ? { $or: [{ UUID }, { _id: UUID }] } : { UUID };
+    const product = await Product.findOne(filter);
 
     if (!product) {
       return responseManager.error(res, 404, "Product does not exist");
@@ -37,6 +39,7 @@ export const addRating = async (req, res) => {
 
     if (existingRating) {
       existingRating.rating = Rating;
+      if (comment !== undefined) existingRating.comment = comment;
       await existingRating.save();
 
       action = "rating updated";
@@ -45,6 +48,7 @@ export const addRating = async (req, res) => {
         product: product._id,
         user: req.user._id,
         rating: Rating,
+        comment: comment || "",
       });
       action = "rating added";
     }
@@ -75,6 +79,29 @@ export const addRating = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
+    return responseManager.error(res, 500, "Server error");
+  }
+};
+
+export const getAllRatings = async (req, res) => {
+  try {
+    const ratings = await RatingModel.find()
+      .populate("user", "username mail")
+      .populate({
+        path: "product",
+        select: "productName UUID condition location addedBy",
+        populate: { path: "addedBy", select: "username mail" },
+      })
+      .sort({ createdAt: -1 });
+
+    return responseManager.success(
+      res,
+      200,
+      "Ratings fetched successfully",
+      ratings
+    );
+  } catch (error) {
+    console.error("Error fetching ratings:", error);
     return responseManager.error(res, 500, "Server error");
   }
 };
