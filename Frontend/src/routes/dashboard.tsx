@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ItemCard } from "@/components/ItemCard";
 import { Package, Activity as ActivityIcon, Plus, CheckCircle, Clock, Heart } from "lucide-react";
+import { API_BASE_URL as API_URL } from "@/config/api";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -22,8 +23,6 @@ function UserDashboardPage() {
   const { user } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
-  const API_URL = "http://localhost:8091/api";
 
   const fetchDashboard = async () => {
     setLoading(true);

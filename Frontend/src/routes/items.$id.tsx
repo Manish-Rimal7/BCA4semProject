@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { ArrowLeft, MapPin, Users, Heart } from "lucide-react";
+import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, MapPin, Users, Heart, ShieldCheck, Check, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { RatingStars } from "@/components/RatingStars";
 import { StatusPill } from "@/components/StatusPill";
@@ -9,6 +9,7 @@ import { InterestModal } from "@/components/InterestModal";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { API_BASE_URL as API_URL } from "@/config/api";
 
 export const Route = createFileRoute("/items/$id")({
   head: () => ({
@@ -22,16 +23,16 @@ export const Route = createFileRoute("/items/$id")({
 
 function ItemDetail() {
   const { id } = useParams({ from: "/items/$id" });
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(0);
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [adminActionLoading, setAdminActionLoading] = useState(false);
   const [relatedItems, setRelatedItems] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmittingInterest, setIsSubmittingInterest] = useState(false);
-
-  const API_URL = "http://localhost:8091/api";
 
   const fetchProduct = async () => {
     setLoading(true);
@@ -174,6 +175,79 @@ function ItemDetail() {
     }
   };
 
+  const handleAdminApprove = async () => {
+    setAdminActionLoading(true);
+    try {
+      const token = localStorage.getItem("Re-Nest.token");
+      const targetId = data?.UUID || data?._id || id;
+      const res = await fetch(`${API_URL}/products/approveProduct/${targetId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const resData = await res.json();
+      if (res.ok) {
+        toast.success("Product approved! It is now visible to everyone on the feed.");
+        fetchProduct();
+      } else {
+        toast.error(resData.responseMessage || "Failed to approve product");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error approving product");
+    } finally {
+      setAdminActionLoading(false);
+    }
+  };
+
+  const handleAdminReject = async () => {
+    setAdminActionLoading(true);
+    try {
+      const token = localStorage.getItem("Re-Nest.token");
+      const targetId = data?.UUID || data?._id || id;
+      const res = await fetch(`${API_URL}/products/rejectProduct/${targetId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const resData = await res.json();
+      if (res.ok) {
+        toast.success("Product approval revoked");
+        fetchProduct();
+      } else {
+        toast.error(resData.responseMessage || "Failed to revoke product");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error rejecting product");
+    } finally {
+      setAdminActionLoading(false);
+    }
+  };
+
+  const handleAdminDelete = async () => {
+    if (!confirm("Are you sure you want to delete this product?")) return;
+    setAdminActionLoading(true);
+    try {
+      const token = localStorage.getItem("Re-Nest.token");
+      const targetId = data?.UUID || data?._id || id;
+      const res = await fetch(`${API_URL}/products/deleteProduct/${targetId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const resData = await res.json();
+      if (res.ok) {
+        toast.success("Product deleted successfully");
+        navigate({ to: "/admin" });
+      } else {
+        toast.error(resData.responseMessage || "Failed to delete product");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error deleting product");
+    } finally {
+      setAdminActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-16 text-center text-muted-foreground">
@@ -249,6 +323,62 @@ function ItemDetail() {
         </div>
 
         <div className="space-y-6">
+          {/* ADMIN MODERATION CONTROLS CARD */}
+          {user?.role === "admin" && (
+            <div className="rounded-2xl border-2 border-emerald-600/40 bg-emerald-500/5 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <ShieldCheck className="size-5 text-emerald-700 dark:text-emerald-400" />
+                <h3 className="font-bold text-sm text-emerald-950 dark:text-emerald-200">
+                  Admin Moderation Controls
+                </h3>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+                <span>Product Approval Status:</span>
+                {data.isApproved ? (
+                  <span className="rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 px-2.5 py-0.5 font-bold">
+                    Approved & Live
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 px-2.5 py-0.5 font-bold">
+                    Pending Admin Approval
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                {!data.isApproved ? (
+                  <Button
+                    size="sm"
+                    disabled={adminActionLoading}
+                    onClick={handleAdminApprove}
+                    className="flex-1 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs"
+                  >
+                    <Check className="mr-1 size-3.5" /> Approve Product
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={adminActionLoading}
+                    onClick={handleAdminReject}
+                    className="flex-1 rounded-full text-amber-600 border-amber-500/30 text-xs font-semibold hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                  >
+                    <X className="mr-1 size-3.5" /> Revoke Approval
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={adminActionLoading}
+                  onClick={handleAdminDelete}
+                  className="rounded-full text-destructive text-xs hover:bg-destructive/10"
+                  title="Delete product"
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
             <StatusPill status={status} />
             <h1 className="mt-3 text-3xl leading-tight font-bold">{title}</h1>

@@ -7,6 +7,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Field } from "@/components/AuthShell";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { API_BASE_URL as API_URL } from "@/config/api";
 
 const conditions = ["New", "Like new", "Good", "Well loved"];
 
@@ -46,8 +47,6 @@ function DonatePage() {
   const [location, setLocation] = useState("");
   const [imagePreview, setImagePreview] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const API_URL = "http://localhost:8091/api";
 
   useEffect(() => {
     fetch(`${API_URL}/category/getAllCategories`)

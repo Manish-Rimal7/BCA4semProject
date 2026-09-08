@@ -20,7 +20,7 @@ export const submitFeedback = async (req, res) => {
 
     await newFeedback.save();
 
-    console.log(`[FEEDBACK RECEIVED] From: ${email} (${name}) | Type: ${type} | Subject: ${subject}`);
+    console.log(`[FEEDBACK NOTIFICATION TO ] From: ${email} (${name}) | Type: ${type} | Subject: ${subject}`);
 
     return responseManager.success(
       res,

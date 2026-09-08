@@ -51,13 +51,21 @@ function RegisterPage() {
             toast.error("Fill in every field");
             return;
           }
+          if (!/^[A-Za-z\s]+$/.test(username.trim())) {
+            toast.error("Display name should only contain letters and spaces");
+            return;
+          }
+          if (password.length < 8 || !/(?=.*[A-Z])/.test(password)) {
+            toast.error("Password must be at least 8 characters and contain at least one uppercase letter (A-Z)");
+            return;
+          }
           if (password !== confirm) {
-            toast.error("Passwords doesn't match");
+            toast.error("Passwords don't match");
             return;
           }
 
           try {
-            await register(username, address, Number(age), email, password);
+            await register(username.trim(), address.trim(), Number(age), email.trim(), password);
             toast.success("Account created successfully");
             navigate({ to: "/login" });
           } catch (error: any) {
@@ -87,6 +95,9 @@ function RegisterPage() {
           onChange={setPassword}
           placeholder="••••••••"
         />
+        <p className="text-[11px] text-muted-foreground -mt-2">
+          Must be at least 8 characters with at least one uppercase letter (e.g. Password123).
+        </p>
         <Field
           label="Confirm password"
           type="password"

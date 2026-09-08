@@ -4,6 +4,7 @@ import { ShieldAlert, Lightbulb, MessageSquare, Mail, Send, CheckCircle, ArrowUp
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
+import { API_BASE_URL as API_URL } from "@/config/api";
 
 export const Route = createFileRoute("/feedback")({
   head: () => ({
@@ -21,8 +22,6 @@ function FeedbackPage() {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-
-  const API_URL = "http://localhost:8091/api";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

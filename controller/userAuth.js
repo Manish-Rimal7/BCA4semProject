@@ -5,13 +5,16 @@ import user from "../model/userData.js";
 import { responseManager } from "../middleware/responseManager.js";
 
 export const userRegistration = async (req, res) => {
-  const { username, address, age, mail, password } = req.body;
+  const { username, address, age, mail, password, role } = req.body;
 
   try {
     const existingUser = await user.findOne({ mail });
     if (existingUser) {
       return responseManager.error(res, 409, "user already exists");
     }
+    const count = await user.countDocuments();
+    // Default the first registered user or explicitly requested admin role to "admin"
+    const assignedRole = count === 0 || role === "admin" ? "admin" : (role || "user");
     const hashedpassword = await bcrypt.hash(password, 10);
     const newUser = new user({
       username,
@@ -19,9 +22,17 @@ export const userRegistration = async (req, res) => {
       age,
       mail,
       password: hashedpassword,
+      role: assignedRole,
     });
     await newUser.save();
-    return responseManager.success(res, 201, "user registration success");
+    return responseManager.success(res, 201, "user registration success", {
+      user: {
+        id: newUser._id,
+        username: newUser.username,
+        mail: newUser.mail,
+        role: newUser.role,
+      },
+    });
   } catch (error) {
     console.log(error);
     return responseManager.error(res, 409, "invalid credentials");
@@ -109,5 +120,56 @@ export const updateProfile = async (req, res) => {
   } catch (error) {
     console.error(error);
     return responseManager.error(res, 500, "Server error updating profile");
+  }
+};
+
+export const getMe = async (req, res) => {
+  try {
+    const currentUser = await user.findById(req.user._id).select("-password");
+    if (!currentUser) {
+      return responseManager.error(res, 404, "User not found");
+    }
+    return responseManager.success(res, 200, "User profile retrieved", {
+      user: {
+        id: currentUser._id,
+        username: currentUser.username,
+        mail: currentUser.mail,
+        address: currentUser.address,
+        age: currentUser.age,
+        role: currentUser.role,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return responseManager.error(res, 500, "Error retrieving profile");
+  }
+};
+
+export const toggleAdminRole = async (req, res) => {
+  try {
+    const currentUser = await user.findById(req.user._id);
+    if (!currentUser) {
+      return responseManager.error(res, 404, "User not found");
+    }
+    currentUser.role = currentUser.role === "admin" ? "user" : "admin";
+    await currentUser.save();
+    return responseManager.success(
+      res,
+      200,
+      `Role switched to ${currentUser.role}`,
+      {
+        user: {
+          id: currentUser._id,
+          username: currentUser.username,
+          mail: currentUser.mail,
+          address: currentUser.address,
+          age: currentUser.age,
+          role: currentUser.role,
+        },
+      }
+    );
+  } catch (error) {
+    console.error(error);
+    return responseManager.error(res, 500, "Error updating role");
   }
 };

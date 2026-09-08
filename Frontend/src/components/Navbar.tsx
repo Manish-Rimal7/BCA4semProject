@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Menu, Plus, Sprout, X, Sun, Moon } from "lucide-react";
+import { Menu, Plus, Sprout, X, Sun, Moon, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ const links = [
 ] as const;
 
 export function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, toggleAdminRole } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -34,16 +35,33 @@ export function Navbar() {
           {l.label}
         </Link>
       ))}
-      {user?.role === "admin" && (
+      {user?.role === "admin" ? (
         <Link
           to={"/admin" as any}
           onClick={() => setOpen(false)}
-          className="rounded-full px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          activeProps={{ className: "bg-secondary text-foreground font-medium" }}
+          className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-3 py-1.5 text-xs font-bold transition-all hover:bg-emerald-200 shadow-xs"
+          activeProps={{ className: "ring-2 ring-emerald-600 bg-emerald-200 dark:bg-emerald-900" }}
         >
-          Admin
+          <ShieldCheck className="size-3.5" />
+          Admin Panel
         </Link>
-      )}
+      ) : user ? (
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              await toggleAdminRole();
+              toast.success("Switched to Admin mode!");
+            } catch {
+              toast.error("Failed to switch role");
+            }
+          }}
+          className="rounded-full border border-dashed border-emerald-600/40 text-emerald-700 dark:text-emerald-400 px-2.5 py-1 text-xs font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+          title="Switch to Admin role to manage products & approvals"
+        >
+          Admin Mode
+        </button>
+      ) : null}
     </>
   );
 

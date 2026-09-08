@@ -339,7 +339,9 @@ export const giveProduct = async (req, res) => {
 export const approveProduct = async (req, res) => {
   const { UUID } = req.params;
   try {
-    const product = await Product.findOne({ UUID });
+    const isObjectId = UUID.match(/^[0-9a-fA-F]{24}$/);
+    const filter = isObjectId ? { $or: [{ UUID }, { _id: UUID }] } : { UUID };
+    const product = await Product.findOne(filter);
     if (!product) {
       return responseManager.error(res, 404, "Product not found");
     }
@@ -379,7 +381,9 @@ export const approveProduct = async (req, res) => {
 export const rejectProduct = async (req, res) => {
   const { UUID } = req.params;
   try {
-    const product = await Product.findOne({ UUID });
+    const isObjectId = UUID.match(/^[0-9a-fA-F]{24}$/);
+    const filter = isObjectId ? { $or: [{ UUID }, { _id: UUID }] } : { UUID };
+    const product = await Product.findOne(filter);
     if (!product) {
       return responseManager.error(res, 404, "Product not found");
     }
@@ -451,13 +455,18 @@ export const deleteProduct = async (req, res) => {
   }
 
   try {
-    const product = await Product.findOne({ UUID });
+    const isObjectId = UUID.match(/^[0-9a-fA-F]{24}$/);
+    const filter = isObjectId ? { $or: [{ UUID }, { _id: UUID }] } : { UUID };
+    const product = await Product.findOne(filter);
 
     if (!product) {
       return responseManager.error(res, 404, "Product does not exist");
     }
 
-    if (product.addedBy.toString() !== req.user._id.toString()) {
+    if (
+      product.addedBy.toString() !== req.user._id.toString() &&
+      req.user.role !== "admin"
+    ) {
       return responseManager.error(
         res,
         403,

@@ -20,6 +20,7 @@ import {
   Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { API_BASE_URL as API_URL } from "@/config/api";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -58,8 +59,6 @@ function AdminDashboardPage() {
   const [editType, setEditType] = useState("");
   const [editStatus, setEditStatus] = useState("active");
   const [isSubmittingCat, setIsSubmittingCat] = useState(false);
-
-  const API_URL = "http://localhost:8091/api";
 
   const fetchAdminData = async () => {
     setLoading(true);
@@ -323,7 +322,8 @@ function AdminDashboardPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Admin Control Panel</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage all platform products, review approval queues, monitor users, and configure categories.
+            Manage all platform products, review approval queues, monitor users, and configure
+            categories.
           </p>
         </div>
       </div>
@@ -338,7 +338,9 @@ function AdminDashboardPage() {
                 New Category Suggestions Pending Review ({data.newCategoryAlerts.length})
               </h4>
               <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
-                Neighbours registered items in new categories not currently saved in MongoDB. Approving these products will automatically approve and add the category to the database.
+                Neighbours registered items in new categories not currently saved in MongoDB.
+                Approving these products will automatically approve and add the category to the
+                database.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {data.newCategoryAlerts.map((p: any) => (
@@ -347,7 +349,8 @@ function AdminDashboardPage() {
                     className="inline-flex items-center gap-2 rounded-xl bg-background/90 border border-amber-500/30 px-3 py-1.5 text-xs shadow-xs"
                   >
                     <span>
-                      Item: <strong className="text-foreground">{p.productName}</strong> by <em>{p.addedBy?.username || "Neighbour"}</em>
+                      Item: <strong className="text-foreground">{p.productName}</strong> by{" "}
+                      <em>{p.addedBy?.username || "Neighbour"}</em>
                     </span>
                     <span className="rounded-full bg-amber-600 text-white px-2 py-0.5 text-[10px] font-bold">
                       Category: {p.productCategory}
@@ -375,7 +378,9 @@ function AdminDashboardPage() {
               <Clock className="size-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.pendingApprovals ?? pendingProducts.length}</p>
+              <p className="text-2xl font-bold">
+                {stats.pendingApprovals ?? pendingProducts.length}
+              </p>
               <p className="text-xs text-muted-foreground font-medium">Pending Approvals</p>
             </div>
           </div>
@@ -427,7 +432,7 @@ function AdminDashboardPage() {
             "flex items-center gap-2 pb-3 text-sm font-semibold transition-all relative border-b-2 -mb-px",
             activeTab === "products"
               ? "border-emerald-700 text-emerald-800 dark:text-emerald-400 font-bold"
-              : "border-transparent text-muted-foreground hover:text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
           <Package className="size-4" />
@@ -444,7 +449,7 @@ function AdminDashboardPage() {
             "flex items-center gap-2 pb-3 text-sm font-semibold transition-all relative border-b-2 -mb-px",
             activeTab === "categories"
               ? "border-emerald-700 text-emerald-800 dark:text-emerald-400 font-bold"
-              : "border-transparent text-muted-foreground hover:text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
           <FolderTree className="size-4" />
@@ -461,7 +466,7 @@ function AdminDashboardPage() {
             "flex items-center gap-2 pb-3 text-sm font-semibold transition-all relative border-b-2 -mb-px",
             activeTab === "users"
               ? "border-emerald-700 text-emerald-800 dark:text-emerald-400 font-bold"
-              : "border-transparent text-muted-foreground hover:text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
           <Users className="size-4" />
@@ -524,6 +529,68 @@ function AdminDashboardPage() {
             </div>
           </div>
 
+          {/* Dedicated Pending Approvals Section */}
+          {pendingProducts.length > 0 && statusFilter === "all" && !productSearch && (
+            <div className="rounded-2xl border-2 border-amber-500/40 bg-amber-500/5 p-5 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="flex size-7 items-center justify-center rounded-full bg-amber-500 text-white font-bold text-xs">
+                    {pendingProducts.length}
+                  </span>
+                  <h3 className="text-base font-bold text-amber-950 dark:text-amber-200">
+                    Products Awaiting Approval
+                  </h3>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Items require admin approval before appearing on the public browse feed
+                </span>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {pendingProducts.map((p: any) => (
+                  <div
+                    key={p.UUID || p._id}
+                    className="flex flex-col justify-between rounded-xl border border-amber-500/30 bg-card p-4 shadow-xs"
+                  >
+                    <div>
+                      <div className="mb-2 flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground truncate">
+                          By: <strong className="text-foreground">{p.addedBy?.username || "User"}</strong>
+                        </span>
+                        <span className="rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 px-2 py-0.5 font-bold text-[10px]">
+                          Pending Review
+                        </span>
+                      </div>
+                      <div className="font-semibold text-sm mb-1 line-clamp-1">{p.productName}</div>
+                      <div className="text-xs text-muted-foreground mb-3 flex items-center gap-2">
+                        <span>Category: <strong>{p.productCategory}</strong></span>
+                        <span>•</span>
+                        <span>{p.location || "Local"}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-2 border-t border-border/60">
+                      <Button
+                        size="sm"
+                        className="flex-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs"
+                        onClick={() => handleApprove(p.UUID || p._id)}
+                      >
+                        <Check className="mr-1 size-3.5" /> Approve Now
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full text-destructive text-xs hover:bg-destructive/10"
+                        onClick={() => handleDeleteProduct(p.UUID || p._id)}
+                        title="Delete product"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Products Grid */}
           {filteredProducts.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border p-12 text-center text-muted-foreground">
@@ -541,7 +608,10 @@ function AdminDashboardPage() {
                     <div>
                       <div className="mb-2 flex items-center justify-between text-xs">
                         <span className="text-muted-foreground truncate">
-                          Added by: <strong className="text-foreground">{p.addedBy?.username || "User"}</strong>
+                          Added by:{" "}
+                          <strong className="text-foreground">
+                            {p.addedBy?.username || "User"}
+                          </strong>
                         </span>
                         {p.isApproved ? (
                           <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-emerald-600 font-semibold dark:text-emerald-400">
@@ -564,8 +634,8 @@ function AdminDashboardPage() {
                       {!p.isApproved ? (
                         <Button
                           size="sm"
-                          className="flex-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold"
-                          onClick={() => handleApprove(p.UUID)}
+                          className="flex-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs"
+                          onClick={() => handleApprove(p.UUID || p._id)}
                         >
                           <Check className="mr-1 size-3.5" /> Approve
                         </Button>
@@ -578,7 +648,7 @@ function AdminDashboardPage() {
                           size="sm"
                           variant="outline"
                           className="flex-1 rounded-full text-amber-600 border-amber-500/30 text-xs font-semibold hover:bg-amber-50 dark:hover:bg-amber-950/20"
-                          onClick={() => handleReject(p.UUID)}
+                          onClick={() => handleReject(p.UUID || p._id)}
                         >
                           <X className="mr-1 size-3.5" /> Revoke
                         </Button>
@@ -587,7 +657,7 @@ function AdminDashboardPage() {
                         size="sm"
                         variant="outline"
                         className="rounded-full text-destructive text-xs font-semibold hover:bg-destructive/10"
-                        onClick={() => handleDeleteProduct(p.UUID)}
+                        onClick={() => handleDeleteProduct(p.UUID || p._id)}
                       >
                         <Trash2 className="size-3.5" />
                       </Button>
@@ -681,7 +751,7 @@ function AdminDashboardPage() {
                               "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider",
                               cat.status === "active"
                                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                                : "bg-muted text-muted-foreground"
+                                : "bg-muted text-muted-foreground",
                             )}
                           >
                             {cat.status || "active"}
@@ -741,7 +811,8 @@ function AdminDashboardPage() {
           <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
             <div className="p-4 border-b border-border/80 flex items-center justify-between">
               <h3 className="text-base font-semibold flex items-center gap-2">
-                <Users className="size-4 text-emerald-600" /> Registered Community Members ({filteredUsers.length})
+                <Users className="size-4 text-emerald-600" /> Registered Community Members (
+                {filteredUsers.length})
               </h3>
             </div>
 
@@ -777,15 +848,19 @@ function AdminDashboardPage() {
                               "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider",
                               u.role === "admin"
                                 ? "bg-purple-500/10 text-purple-600 dark:text-purple-400"
-                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
                             )}
                           >
                             {u.role || "Member"}
                           </span>
                         </td>
-                        <td className="p-4 text-muted-foreground text-xs">{u.address || "Kathmandu"}</td>
+                        <td className="p-4 text-muted-foreground text-xs">
+                          {u.address || "Kathmandu"}
+                        </td>
                         <td className="p-4 text-right text-xs text-muted-foreground">
-                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "Active Member"}
+                          {u.createdAt
+                            ? new Date(u.createdAt).toLocaleDateString()
+                            : "Active Member"}
                         </td>
                       </tr>
                     ))}

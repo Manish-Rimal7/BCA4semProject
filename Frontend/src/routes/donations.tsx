@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ItemCard } from "@/components/ItemCard";
 import { Button } from "@/components/ui/button";
 import { Package, Plus, CheckCircle, Clock } from "lucide-react";
+import { API_BASE_URL as API_URL } from "@/config/api";
 
 export const Route = createFileRoute("/donations")({
   head: () => ({
@@ -22,8 +23,6 @@ function MyDonationsPage() {
   const { user } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const API_URL = "http://localhost:8091/api";
 
   const fetchDonations = async () => {
     setLoading(true);

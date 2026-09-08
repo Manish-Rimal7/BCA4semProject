@@ -4,6 +4,7 @@ import { Star, MessageSquare, Plus, ThumbsUp, Heart, User, CheckCircle2 } from "
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
+import { API_BASE_URL as API_URL } from "@/config/api";
 
 export const Route = createFileRoute("/reviews")({
   head: () => ({
@@ -24,8 +25,6 @@ function ReviewsPage() {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const API_URL = "http://localhost:8091/api";
 
   const fetchReviews = async () => {
     setLoading(true);
@@ -62,38 +61,42 @@ function ReviewsPage() {
           _id: "rev-1",
           username: "Ram Sharma",
           rating: 5,
-          comment: "Re-Nest is amazing! Donated my old laptop to a college student in Lazimpat. The pickup was smooth and genuine.",
+          comment:
+            "Re-Nest is amazing! Donated my old laptop to a college student in Lazimpat. The pickup was smooth and genuine.",
           date: "2 days ago",
           verified: true,
-          likes: 12
+          likes: 12,
         },
         {
           _id: "rev-2",
           username: "Sita Adhikari",
           rating: 5,
-          comment: "Received a wooden dining chair set for my new flat in Jhamsikhel. So grateful to the donor!",
+          comment:
+            "Received a wooden dining chair set for my new flat in Jhamsikhel. So grateful to the donor!",
           date: "5 days ago",
           verified: true,
-          likes: 8
+          likes: 8,
         },
         {
           _id: "rev-3",
           username: "Bikash Thapa",
           rating: 4,
-          comment: "Great initiative for zero-waste in Nepal. Listed a coffee maker and within an hour a neighbour requested it.",
+          comment:
+            "Great initiative for zero-waste in Nepal. Listed a coffee maker and within an hour a neighbour requested it.",
           date: "1 week ago",
           verified: true,
-          likes: 15
+          likes: 15,
         },
         {
           _id: "rev-4",
           username: "Aayusha KC",
           rating: 5,
-          comment: "The admin approval process ensures high quality listings. Highly recommend Re-Nest to everyone!",
+          comment:
+            "The admin approval process ensures high quality listings. Highly recommend Re-Nest to everyone!",
           date: "2 weeks ago",
           verified: true,
-          likes: 9
-        }
+          likes: 9,
+        },
       ];
 
       // Merge backend reviews first, then initial stories
@@ -176,9 +179,10 @@ function ReviewsPage() {
     }
   };
 
-  const avgRating = reviews.length > 0
-    ? (reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviews.length).toFixed(1)
-    : "4.9";
+  const avgRating =
+    reviews.length > 0
+      ? (reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviews.length).toFixed(1)
+      : "4.9";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
@@ -189,7 +193,9 @@ function ReviewsPage() {
             <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
             <span>Community Feedback & Stories</span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">User Reviews & Experiences</h1>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+            User Reviews & Experiences
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Read how neighbours are sharing, reusing, and connecting across Kathmandu & Lalitpur.
           </p>
@@ -216,7 +222,9 @@ function ReviewsPage() {
                 <Star key={s} className="size-4 fill-amber-400 text-amber-400" />
               ))}
             </div>
-            <p className="text-xs text-muted-foreground font-medium">Based on {reviews.length} community reviews</p>
+            <p className="text-xs text-muted-foreground font-medium">
+              Based on {reviews.length} community reviews
+            </p>
           </div>
         </div>
 
@@ -226,7 +234,9 @@ function ReviewsPage() {
           </div>
           <div>
             <h3 className="text-lg font-bold text-foreground">100% Free Giving</h3>
-            <p className="text-xs text-muted-foreground">Every item is donated with zero monetary transactions.</p>
+            <p className="text-xs text-muted-foreground">
+              Every item is donated with zero monetary transactions.
+            </p>
           </div>
         </div>
 
@@ -236,7 +246,9 @@ function ReviewsPage() {
           </div>
           <div>
             <h3 className="text-lg font-bold text-foreground">Verified Donors</h3>
-            <p className="text-xs text-muted-foreground">Authentic neighbours sharing in your local area.</p>
+            <p className="text-xs text-muted-foreground">
+              Authentic neighbours sharing in your local area.
+            </p>
           </div>
         </div>
       </div>
@@ -282,10 +294,11 @@ function ReviewsPage() {
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star
                           key={star}
-                          className={`size-3.5 ${star <= rev.rating
+                          className={`size-3.5 ${
+                            star <= rev.rating
                               ? "fill-amber-400 text-amber-400"
                               : "text-muted border-none"
-                            }`}
+                          }`}
                         />
                       ))}
                     </div>
@@ -321,7 +334,9 @@ function ReviewsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold">Write a Community Review</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Share your experience using Re-Nest.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Share your experience using Re-Nest.
+            </p>
 
             <form onSubmit={handleSubmitReview} className="mt-5 space-y-4">
               {products.length > 0 && (
@@ -356,10 +371,11 @@ function ReviewsPage() {
                       className="p-1 hover:scale-110 transition-transform"
                     >
                       <Star
-                        className={`size-6 ${star <= rating
+                        className={`size-6 ${
+                          star <= rating
                             ? "fill-amber-400 text-amber-400"
                             : "text-muted-foreground/30"
-                          }`}
+                        }`}
                       />
                     </button>
                   ))}

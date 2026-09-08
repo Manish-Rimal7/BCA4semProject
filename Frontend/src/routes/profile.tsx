@@ -23,6 +23,7 @@ import {
   Sun,
   Moon,
 } from "lucide-react";
+import { API_BASE_URL as API_URL } from "@/config/api";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -36,7 +37,7 @@ export const Route = createFileRoute("/profile")({
 });
 
 function UserProfilePage() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, toggleAdminRole } = useAuth();
   const { theme, setTheme } = useTheme();
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [requestsData, setRequestsData] = useState<any>(null);
@@ -49,8 +50,6 @@ function UserProfilePage() {
   const [editAge, setEditAge] = useState<number | string>("");
   const [editPassword, setEditPassword] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
-
-  const API_URL = "http://localhost:8091/api";
 
   const fetchProfileData = async () => {
     setLoading(true);
@@ -151,9 +150,9 @@ function UserProfilePage() {
   const avgRating =
     receivedRatings.length > 0
       ? (
-        receivedRatings.reduce((acc: number, r: any) => acc + (r.rating || 5), 0) /
-        receivedRatings.length
-      ).toFixed(1)
+          receivedRatings.reduce((acc: number, r: any) => acc + (r.rating || 5), 0) /
+          receivedRatings.length
+        ).toFixed(1)
       : "5.0";
 
   return (
@@ -170,7 +169,9 @@ function UserProfilePage() {
               </div>
               <div className="mb-1">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold tracking-tight">{user?.username || "Community Member"}</h1>
+                  <h1 className="text-2xl font-bold tracking-tight">
+                    {user?.username || "Community Member"}
+                  </h1>
                   <span className="rounded-full bg-emerald-500/10 px-3 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 capitalize">
                     {user?.role || "Member"}
                   </span>
@@ -181,10 +182,32 @@ function UserProfilePage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button onClick={handleOpenEdit} variant="outline" className="rounded-full">
                 <Edit className="mr-1.5 size-4" /> Edit Profile
               </Button>
+              {user?.role === "admin" ? (
+                <Button asChild className="rounded-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold">
+                  <Link to="/admin">
+                    <ShieldCheck className="mr-1.5 size-4" /> Admin Dashboard
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  onClick={async () => {
+                    try {
+                      await toggleAdminRole();
+                      toast.success("Admin privileges activated!");
+                    } catch {
+                      toast.error("Failed to update role");
+                    }
+                  }}
+                  variant="outline"
+                  className="rounded-full border-emerald-600/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-semibold"
+                >
+                  <ShieldCheck className="mr-1.5 size-4" /> Switch to Admin
+                </Button>
+              )}
               <Button asChild className="rounded-full">
                 <Link to="/donate">
                   <Plus className="mr-1.5 size-4" /> Donate Item
@@ -288,16 +311,22 @@ function UserProfilePage() {
             </div>
             <dl className="space-y-3 text-xs">
               <div>
-                <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Username</dt>
+                <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">
+                  Username
+                </dt>
                 <dd className="font-semibold text-foreground mt-0.5">{user?.username}</dd>
               </div>
               <div className="pt-2 border-t border-border/50">
-                <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Email Address</dt>
+                <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">
+                  Email Address
+                </dt>
                 <dd className="font-semibold text-foreground mt-0.5">{user?.mail}</dd>
               </div>
               {user?.address && (
                 <div className="pt-2 border-t border-border/50">
-                  <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Address / Location</dt>
+                  <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">
+                    Address / Location
+                  </dt>
                   <dd className="font-semibold text-foreground mt-0.5 flex items-center gap-1">
                     <MapPin className="size-3 text-muted-foreground" /> {user.address}
                   </dd>
@@ -305,12 +334,16 @@ function UserProfilePage() {
               )}
               {user?.age && (
                 <div className="pt-2 border-t border-border/50">
-                  <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Age</dt>
+                  <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">
+                    Age
+                  </dt>
                   <dd className="font-semibold text-foreground mt-0.5">{user.age} years old</dd>
                 </div>
               )}
               <div className="pt-2 border-t border-border/50">
-                <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Role / Status</dt>
+                <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">
+                  Role / Status
+                </dt>
                 <dd className="font-semibold text-foreground mt-0.5 flex items-center gap-1.5">
                   <ShieldCheck className="size-3.5 text-emerald-600" />
                   <span className="capitalize">{user?.role || "Member"}</span>
@@ -322,19 +355,26 @@ function UserProfilePage() {
           {/* Theme Preference Option Card */}
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
             <h3 className="text-base font-bold flex items-center gap-2 mb-2">
-              {theme === "dark" ? <Moon className="size-4 text-amber-400" /> : <Sun className="size-4 text-amber-500" />}
+              {theme === "dark" ? (
+                <Moon className="size-4 text-amber-400" />
+              ) : (
+                <Sun className="size-4 text-amber-500" />
+              )}
               Appearance Theme
             </h3>
-            <p className="text-xs text-muted-foreground mb-4">Choose your preferred visual theme for Re-Nest.</p>
+            <p className="text-xs text-muted-foreground mb-4">
+              Choose your preferred visual theme for Re-Nest.
+            </p>
 
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setTheme("light")}
-                className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all text-xs font-semibold ${theme === "light"
+                className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all text-xs font-semibold ${
+                  theme === "light"
                     ? "border-emerald-700 bg-emerald-500/10 text-emerald-900 dark:text-emerald-300 font-bold shadow-sm"
                     : "border-border bg-background text-muted-foreground hover:bg-muted/40"
-                  }`}
+                }`}
               >
                 <Sun className="size-5 text-amber-500" />
                 <span>☀️ Light Theme</span>
@@ -343,10 +383,11 @@ function UserProfilePage() {
               <button
                 type="button"
                 onClick={() => setTheme("dark")}
-                className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all text-xs font-semibold ${theme === "dark"
+                className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all text-xs font-semibold ${
+                  theme === "dark"
                     ? "border-emerald-700 bg-emerald-500/10 text-emerald-900 dark:text-emerald-300 font-bold shadow-sm"
                     : "border-border bg-background text-muted-foreground hover:bg-muted/40"
-                  }`}
+                }`}
               >
                 <Moon className="size-5 text-amber-400" />
                 <span>🌙 Dark Theme</span>
@@ -363,7 +404,10 @@ function UserProfilePage() {
             ) : (
               <div className="space-y-3 text-xs">
                 {activities.slice(0, 5).map((act: any) => (
-                  <div key={act._id} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                  <div
+                    key={act._id}
+                    className="border-b border-border/50 pb-2 last:border-0 last:pb-0"
+                  >
                     <p className="font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider text-[10px]">
                       {act.action}
                     </p>
@@ -401,7 +445,9 @@ function UserProfilePage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold">Edit Profile</h3>
-                <p className="text-xs text-muted-foreground">Update your personal account information.</p>
+                <p className="text-xs text-muted-foreground">
+                  Update your personal account information.
+                </p>
               </div>
             </div>
 
@@ -483,4 +529,3 @@ function UserProfilePage() {
     </div>
   );
 }
-

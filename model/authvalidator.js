@@ -10,6 +10,5 @@ export const registerSchema = Joi.object({
   password: Joi.string().pattern(passwordRegex).required(),
   age: Joi.number().min(1).max(120).required(),
   address: Joi.string().required(),
-
-  // age: Joi.string().pattern(age).required(),
+  role: Joi.string().valid("admin", "user").optional(),
 });

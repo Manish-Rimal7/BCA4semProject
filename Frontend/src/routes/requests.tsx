@@ -7,6 +7,7 @@ import { ItemCard } from "@/components/ItemCard";
 import { Button } from "@/components/ui/button";
 import { Heart, Gift, Sparkles, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { API_BASE_URL as API_URL } from "@/config/api";
 
 export const Route = createFileRoute("/requests")({
   head: () => ({
@@ -31,8 +32,6 @@ function MyRequestsPage() {
   const [reviewRating, setReviewRating] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>("");
   const [isSubmittingReview, setIsSubmittingReview] = useState<boolean>(false);
-
-  const API_URL = "http://localhost:8091/api";
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

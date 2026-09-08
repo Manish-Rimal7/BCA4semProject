@@ -16,6 +16,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { API_BASE_URL } from "@/config/api";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -33,21 +34,26 @@ function IndexPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
 
   const fetchProducts = () => {
-    fetch("http://localhost:8091/api/products/getProducts")
+    fetch(`${API_BASE_URL}/products/getProducts`)
       .then((res) => res.json())
       .then((data) => {
         if (data.responseCode === 200 && Array.isArray(data.responseData)) {
           setItems(data.responseData);
         } else if (Array.isArray(data)) {
           setItems(data);
+        } else {
+          setItems([]);
         }
       })
-      .catch((err) => console.error("Failed to fetch products:", err))
+      .catch((err) => {
+        console.error("Failed to fetch products:", err);
+        setItems([]);
+      })
       .finally(() => setLoading(false));
   };
 
   const fetchCategories = () => {
-    fetch("http://localhost:8091/api/category/getAllCategories")
+    fetch(`${API_BASE_URL}/category/getAllCategories`)
       .then((res) => res.json())
       .then((data) => {
         const predefined = [

@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { StatusPill } from "@/components/StatusPill";
 import { InterestModal } from "@/components/InterestModal";
 import { cn } from "@/lib/utils";
+import { API_BASE_URL as API_URL } from "@/config/api";
 
 export function ItemCard({ item, onInterestToggle }: { item: any; onInterestToggle?: () => void }) {
   const { user } = useAuth();
@@ -34,8 +35,6 @@ export function ItemCard({ item, onInterestToggle }: { item: any; onInterestTogg
   });
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const API_URL = "http://localhost:8091/api";
 
   const executeToggleInterest = async (purpose?: string) => {
     setLoading(true);
