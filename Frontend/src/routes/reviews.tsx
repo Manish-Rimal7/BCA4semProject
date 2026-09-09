@@ -26,6 +26,51 @@ function ReviewsPage() {
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Helpful thumbs-up state
+  const [helpfulReviews, setHelpfulReviews] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("Re-Nest.helpfulReviews");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const handleToggleHelpful = (reviewId: string) => {
+    setHelpfulReviews((prev) => {
+      const next = new Set(prev);
+      const isAlreadyHelpful = next.has(reviewId);
+      if (isAlreadyHelpful) {
+        next.delete(reviewId);
+        toast.info("Removed helpful mark");
+      } else {
+        next.add(reviewId);
+        toast.success("Marked as helpful!");
+      }
+
+      try {
+        localStorage.setItem("Re-Nest.helpfulReviews", JSON.stringify(Array.from(next)));
+      } catch {
+        /* ignore */
+      }
+
+      setReviews((prevRevs) =>
+        prevRevs.map((r) => {
+          if (r._id === reviewId) {
+            const currentLikes = r.likes || 0;
+            return {
+              ...r,
+              likes: isAlreadyHelpful ? Math.max(0, currentLikes - 1) : currentLikes + 1,
+            };
+          }
+          return r;
+        })
+      );
+
+      return next;
+    });
+  };
+
   const fetchReviews = async () => {
     setLoading(true);
     try {
@@ -313,8 +358,24 @@ function ReviewsPage() {
                   <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-medium">
                     <CheckCircle2 className="size-3" /> Verified Member
                   </span>
-                  <button className="flex items-center gap-1 hover:text-foreground transition-colors">
-                    <ThumbsUp className="size-3.5" /> Helpful ({rev.likes})
+                  <button
+                    type="button"
+                    onClick={() => handleToggleHelpful(rev._id)}
+                    className={`flex items-center gap-1.5 transition-all px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer select-none ${
+                      helpfulReviews.has(rev._id)
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 font-semibold"
+                        : "hover:text-foreground hover:bg-secondary text-muted-foreground"
+                    }`}
+                    title={helpfulReviews.has(rev._id) ? "You marked this review as helpful (click to undo)" : "Mark this review as helpful"}
+                  >
+                    <ThumbsUp
+                      className={`size-3.5 transition-all ${
+                        helpfulReviews.has(rev._id)
+                          ? "fill-emerald-600 text-emerald-600 scale-110"
+                          : ""
+                      }`}
+                    />
+                    <span>Helpful ({rev.likes})</span>
                   </button>
                 </div>
               </div>
