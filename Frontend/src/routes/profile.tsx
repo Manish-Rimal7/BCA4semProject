@@ -186,26 +186,11 @@ function UserProfilePage() {
               <Button onClick={handleOpenEdit} variant="outline" className="rounded-full">
                 <Edit className="mr-1.5 size-4" /> Edit Profile
               </Button>
-              {user?.role === "admin" ? (
+              {user?.role === "admin" && (
                 <Button asChild className="rounded-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold">
                   <Link to="/admin">
                     <ShieldCheck className="mr-1.5 size-4" /> Admin Dashboard
                   </Link>
-                </Button>
-              ) : (
-                <Button
-                  onClick={async () => {
-                    try {
-                      await toggleAdminRole();
-                      toast.success("Admin privileges activated!");
-                    } catch {
-                      toast.error("Failed to update role");
-                    }
-                  }}
-                  variant="outline"
-                  className="rounded-full border-emerald-600/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-semibold"
-                >
-                  <ShieldCheck className="mr-1.5 size-4" /> Switch to Admin
                 </Button>
               )}
               <Button asChild className="rounded-full">

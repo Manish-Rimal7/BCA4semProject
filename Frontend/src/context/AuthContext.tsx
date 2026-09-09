@@ -35,6 +35,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
 
+  const syncUserFromBackend = async () => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return;
+
+    try {
+      // 1. Try /getMe
+      let res = await fetch(`${API_URL}/getMe`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      let data = await res.json().catch(() => null);
+
+      let freshUser = null;
+      if (res.ok && data?.responseData?.user) {
+        freshUser = data.responseData.user;
+      } else {
+        // 2. Fallback to /dashboard/dashboard which returns { user, ... }
+        res = await fetch(`${API_URL}/dashboard/dashboard`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        data = await res.json().catch(() => null);
+        if (res.ok && data?.responseData?.user) {
+          freshUser = data.responseData.user;
+        }
+      }
+
+      if (freshUser) {
+        setUser(freshUser);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(freshUser));
+      } else if (res && (res.status === 401 || res.status === 404)) {
+        persist(null);
+      }
+    } catch (err) {
+      console.warn("Could not sync user profile:", err);
+    }
+  };
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -45,25 +81,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) {
-      // Sync fresh user role and profile from backend
-      fetch(`${API_URL}/getMe`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.responseCode === 200 && data.responseData?.user) {
-            const fresh = data.responseData.user;
-            setUser(fresh);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
-          }
-        })
-        .catch((err) => {
-          console.warn("Could not sync user profile:", err);
-        })
-        .finally(() => setReady(true));
+      syncUserFromBackend().finally(() => setReady(true));
     } else {
       setReady(true);
     }
+
+    const handleFocus = () => {
+      syncUserFromBackend();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("visibilitychange", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("visibilitychange", handleFocus);
+    };
   }, []);
 
   const persist = (next: User | null, token?: string) => {
