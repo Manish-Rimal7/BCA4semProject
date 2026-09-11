@@ -19,7 +19,7 @@ import {
   Search,
   Filter,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatNepalDateTime } from "@/lib/utils";
 import { API_BASE_URL as API_URL } from "@/config/api";
 
 export const Route = createFileRoute("/admin")({
@@ -859,7 +859,7 @@ function AdminDashboardPage() {
                         </td>
                         <td className="p-4 text-right text-xs text-muted-foreground">
                           {u.createdAt
-                            ? new Date(u.createdAt).toLocaleDateString()
+                            ? formatNepalDateTime(u.createdAt)
                             : "Active Member"}
                         </td>
                       </tr>

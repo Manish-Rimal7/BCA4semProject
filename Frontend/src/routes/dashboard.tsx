@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ItemCard } from "@/components/ItemCard";
 import { Package, Activity as ActivityIcon, Plus, CheckCircle, Clock, Heart } from "lucide-react";
 import { API_BASE_URL as API_URL } from "@/config/api";
+import { formatNepalDateTime } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -146,8 +147,7 @@ function UserDashboardPage() {
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "Recently";
-    const d = new Date(dateStr);
-    return isNaN(d.getTime()) ? "Recently" : d.toLocaleDateString();
+    return formatNepalDateTime(dateStr);
   };
 
   if (loading) {
@@ -165,15 +165,20 @@ function UserDashboardPage() {
     <div className="mx-auto max-w-6xl px-4 py-8">
       {/* Admin Notice Banner */}
       {user?.role === "admin" && (
-        <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-900 dark:text-amber-200">
+        <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-emerald-950 dark:text-emerald-200 shadow-sm">
           <div className="flex items-center gap-3">
-            <span className="font-semibold text-sm">🛡️ Admin Mode Active</span>
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              You can approve, reject, or delete products directly from here or the Admin Panel.
+            <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs text-lg">
+              🛡️
             </span>
+            <div>
+              <p className="font-bold text-sm text-foreground">You are logged in with the Administrator role</p>
+              <p className="text-xs text-muted-foreground">
+                Manage community product approvals, category controls, user accounts, and platform metrics in the Admin Dashboard.
+              </p>
+            </div>
           </div>
-          <Button asChild size="sm" variant="outline" className="rounded-full border-amber-500/40">
-            <Link to="/admin">Go to Admin Panel</Link>
+          <Button asChild size="default" className="rounded-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold shrink-0">
+            <Link to="/admin">Open Admin Dashboard →</Link>
           </Button>
         </div>
       )}

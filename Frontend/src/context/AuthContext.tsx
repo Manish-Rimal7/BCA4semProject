@@ -6,6 +6,7 @@ export type User = {
   name?: string;
   username?: string;
   mail: string;
+  email?: string;
   address?: string;
   age?: number;
   role?: string;
@@ -14,14 +15,14 @@ export type User = {
 type AuthValue = {
   user: User | null;
   ready: boolean;
-  login: (mail: string, password: string) => Promise<void>;
+  login: (mail: string, password: string) => Promise<User>;
   register: (
     username: string,
-    address: string,
-    age: number,
+    address: string | undefined,
+    age: number | string | null | undefined,
     mail: string,
     password: string,
-  ) => Promise<void>;
+  ) => Promise<User>;
   updateUser: (updatedUser: User) => void;
   toggleAdminRole: () => Promise<void>;
   logout: () => void;
@@ -30,6 +31,19 @@ type AuthValue = {
 const AuthContext = createContext<AuthValue | null>(null);
 const STORAGE_KEY = "Re-Nest.user";
 const TOKEN_KEY = "Re-Nest.token";
+
+const normalizeUser = (u: any): User => {
+  if (!u) return u;
+  const id = u.id || u._id || "";
+  const mail = u.mail || u.email || "";
+  return {
+    ...u,
+    id,
+    _id: id,
+    mail,
+    email: mail,
+  };
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -61,9 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (freshUser) {
-        setUser(freshUser);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(freshUser));
-      } else if (res && (res.status === 401 || res.status === 404)) {
+        const normalized = normalizeUser(freshUser);
+        setUser(normalized);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+      } else if (res && res.status === 401) {
+        // Only clear if server explicitly confirms token is expired / unauthorized
         persist(null);
       }
     } catch (err) {
@@ -74,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setUser(JSON.parse(raw) as User);
+      if (raw) setUser(normalizeUser(JSON.parse(raw)));
     } catch {
       /* ignore */
     }
@@ -99,11 +115,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const persist = (next: User | null, token?: string) => {
-    setUser(next);
-    if (next && token) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    const normalized = next ? normalizeUser(next) : null;
+    setUser(normalized);
+    if (normalized && token) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
       localStorage.setItem(TOKEN_KEY, token);
-    } else {
+    } else if (!normalized) {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(TOKEN_KEY);
     }
@@ -116,11 +133,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login: async (mail: string, password: string) => {
         let response: Response;
         let data: any;
+        const cleanMail = mail.trim().toLowerCase();
         try {
           response = await fetch(`${API_URL}/userLogin`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mail, password }),
+            body: JSON.stringify({ mail: cleanMail, password }),
           });
           data = await response.json();
         } catch (error) {
@@ -135,7 +153,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const resData = data.responseData || data;
           const loggedInUser = resData.user || resData.existingUser || resData;
           const token = resData.token;
-          persist(loggedInUser, token);
+          const normalized = normalizeUser(loggedInUser);
+          persist(normalized, token);
+          return normalized;
         } else {
           const errorMessage =
             data.responseMessage ||
@@ -148,18 +168,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       register: async (
         username: string,
-        address: string,
-        age: number,
+        address: string | undefined,
+        age: number | string | null | undefined,
         mail: string,
         password: string,
       ) => {
         let response: Response;
         let data: any;
+        const cleanMail = mail.trim().toLowerCase();
+        const parsedAge =
+          age !== undefined && age !== null && age !== "" && !isNaN(Number(age)) && Number(age) > 0
+            ? Number(age)
+            : 20;
+        const cleanAddress = address && address.trim() ? address.trim() : "Kathmandu";
         try {
           response = await fetch(`${API_URL}/userRegister`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, address, age, mail, password }),
+            body: JSON.stringify({
+              username: username.trim(),
+              address: cleanAddress,
+              age: parsedAge,
+              mail: cleanMail,
+              password,
+            }),
           });
           data = await response.json();
         } catch (error) {
@@ -168,11 +200,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const isSuccess = response.ok && (data.responseCode === 200 || data.responseCode === 201 || !data.responseCode);
-        if (!isSuccess) {
+        if (isSuccess) {
+          const resData = data.responseData || data;
+          let registeredUser = resData.user || resData.newUser;
+          let token = resData.token;
+
+          // Auto-login to obtain session and JWT token immediately
+          try {
+            const loginRes = await fetch(`${API_URL}/userLogin`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ mail: cleanMail, password }),
+            });
+            const loginData = await loginRes.json();
+            if (loginRes.ok && loginData.responseData?.token) {
+              token = loginData.responseData.token;
+              registeredUser = loginData.responseData.user || registeredUser;
+            }
+          } catch (loginErr) {
+            console.warn("Auto login after registration failed:", loginErr);
+          }
+
+          if (registeredUser && token) {
+            const normalized = normalizeUser(registeredUser);
+            persist(normalized, token);
+            return normalized;
+          }
+
+          const fallbackUser = normalizeUser(registeredUser || {
+            username: username.trim(),
+            mail: cleanMail,
+            address: cleanAddress,
+            age: parsedAge,
+            role: "user",
+          });
+          return fallbackUser;
+        } else {
           let errorMessage = data.responseMessage || data.message || data.msg;
           if (errorMessage === "validation error") {
             errorMessage =
-              "Validation error: Display name must contain only letters, and password must be at least 8 characters with at least one uppercase letter.";
+              "Validation error: Display name must contain only letters and spaces, and password must be at least 8 characters with at least one uppercase letter (e.g. Password123).";
           }
           errorMessage = errorMessage || "Registration failed";
           console.error(errorMessage);

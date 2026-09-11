@@ -47,8 +47,8 @@ function RegisterPage() {
         className="space-y-4"
         onSubmit={async (e) => {
           e.preventDefault();
-          if (!username || !address || !age || !email || !password) {
-            toast.error("Fill in every field");
+          if (!username.trim() || !email.trim() || !password) {
+            toast.error("Please enter your name, email, and password");
             return;
           }
           if (!/^[A-Za-z\s]+$/.test(username.trim())) {
@@ -59,15 +59,25 @@ function RegisterPage() {
             toast.error("Password must be at least 8 characters and contain at least one uppercase letter (A-Z)");
             return;
           }
-          if (password !== confirm) {
+          if (confirm && password !== confirm) {
             toast.error("Passwords don't match");
             return;
           }
 
           try {
-            await register(username.trim(), address.trim(), Number(age), email.trim(), password);
-            toast.success("Account created successfully");
-            navigate({ to: "/login" });
+            const newUser = await register(
+              username.trim(),
+              address.trim(),
+              age ? Number(age) : undefined,
+              email.trim().toLowerCase(),
+              password
+            );
+            toast.success("Account created successfully!");
+            if (newUser?.role === "admin") {
+              navigate({ to: "/admin" });
+            } else {
+              navigate({ to: "/dashboard" });
+            }
           } catch (error: any) {
             toast.error(error?.message || "Registration failed. Please try again.");
           }
@@ -79,8 +89,8 @@ function RegisterPage() {
           onChange={setUsername}
           placeholder="Manish Rimal"
         />
-        <Field label="Address" value={address} onChange={setAddress} placeholder="Kathmandu" />
-        <Field label="Age" type="number" value={age} onChange={setAge} placeholder="21" />
+        <Field label="Address (Optional)" value={address} onChange={setAddress} placeholder="Kathmandu" />
+        <Field label="Age (Optional)" type="number" value={age} onChange={setAge} placeholder="21" />
         <Field
           label="Email"
           type="email"

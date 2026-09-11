@@ -7,19 +7,28 @@ import { useTheme } from "@/context/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const links = [
-  { to: "/", label: "Browse" },
-  { to: "/requests", label: "My Requests" },
-  { to: "/donations", label: "My Donations" },
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/profile", label: "Profile" },
-] as const;
-
 export function Navbar() {
-  const { user, logout, toggleAdminRole } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+
+  const links = user?.role === "admin"
+    ? [
+        { to: "/admin", label: "Admin Dashboard", isAdmin: true },
+        { to: "/", label: "Browse" },
+        { to: "/requests", label: "My Requests" },
+        { to: "/donations", label: "My Donations" },
+        { to: "/dashboard", label: "My Items" },
+        { to: "/profile", label: "Profile" },
+      ]
+    : [
+        { to: "/", label: "Browse" },
+        { to: "/requests", label: "My Requests" },
+        { to: "/donations", label: "My Donations" },
+        { to: "/dashboard", label: "Dashboard" },
+        { to: "/profile", label: "Profile" },
+      ];
 
   const nav = (
     <>
@@ -28,24 +37,23 @@ export function Navbar() {
           key={l.to}
           to={l.to as any}
           onClick={() => setOpen(false)}
-          className="rounded-full px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          activeProps={{ className: "bg-secondary text-foreground font-medium" }}
+          className={cn(
+            "rounded-full px-3.5 py-1.5 text-sm transition-all flex items-center gap-1.5",
+            (l as any).isAdmin
+              ? "bg-emerald-600 text-white font-semibold hover:bg-emerald-700 shadow-sm"
+              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+          )}
+          activeProps={{
+            className: (l as any).isAdmin
+              ? "ring-2 ring-emerald-500 bg-emerald-700 text-white font-bold"
+              : "bg-secondary text-foreground font-medium",
+          }}
           activeOptions={{ exact: l.to === "/" }}
         >
+          {(l as any).isAdmin && <ShieldCheck className="size-4 shrink-0" />}
           {l.label}
         </Link>
       ))}
-      {user?.role === "admin" && (
-        <Link
-          to={"/admin" as any}
-          onClick={() => setOpen(false)}
-          className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-3.5 py-1.5 text-xs font-bold transition-all hover:bg-emerald-200 shadow-xs"
-          activeProps={{ className: "ring-2 ring-emerald-600 bg-emerald-200 dark:bg-emerald-900" }}
-        >
-          <ShieldCheck className="size-3.5" />
-          Admin Panel
-        </Link>
-      )}
     </>
   );
 
@@ -94,6 +102,11 @@ export function Navbar() {
                   {user.username ? user.username.slice(0, 1) : "U"}
                 </span>
                 <span>{user.username || "Profile"}</span>
+                {user.role === "admin" && (
+                  <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">
+                    Admin
+                  </span>
+                )}
               </Link>
               <button
                 onClick={() => {

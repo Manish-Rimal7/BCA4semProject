@@ -7,30 +7,29 @@ const credential = async (req, res, next) => {
   const header = req.headers.authorization;
 
   if (!header) {
-    return responseManager.error(res, 404, "no header found");
+    return responseManager.error(res, 401, "No authorization header found");
   }
   if (!header.startsWith("Bearer ")) {
-    return responseManager.error(res, 404, "invalid ");
+    return responseManager.error(res, 401, "Invalid token format");
   }
 
   const token = header.split(" ")[1];
 
   try {
     const decoded = jsonwebtoken.verify(token, env.JWT_SECRET);
-    if (!decoded) {
-      return responseManager.error(res, 404, "not decoded");
+    if (!decoded || (!decoded.id && !decoded._id)) {
+      return responseManager.error(res, 401, "Invalid or expired token");
     }
-    const user = await userData.findById(decoded.id);
-    // user = await userData.findById(decoded.id);
+    const userId = decoded.id || decoded._id;
+    const user = await userData.findById(userId);
     if (!user) {
-      // user = await user.findById(decoded.id);
-      return responseManager.error(res, 404, "user not found");
+      return responseManager.error(res, 401, "User not found");
     }
     req.user = user;
     next();
   } catch (error) {
     console.log("error at JWT Middleware", error);
-    return responseManager.error(res, 404, "error occured");
+    return responseManager.error(res, 401, "Unauthorized or expired token");
   }
 };
 export default credential;

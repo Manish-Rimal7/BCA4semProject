@@ -5,57 +5,104 @@ import user from "../model/userData.js";
 import { responseManager } from "../middleware/responseManager.js";
 
 export const userRegistration = async (req, res) => {
-  const { username, address, age, mail, password, role } = req.body;
+  const { username, address, age, password, role } = req.body;
+  const rawMail = req.body.mail || req.body.email;
 
   try {
-    const existingUser = await user.findOne({ mail });
-    if (existingUser) {
-      return responseManager.error(res, 409, "user already exists");
+    const cleanMail = typeof rawMail === "string" ? rawMail.trim().toLowerCase() : "";
+    if (!cleanMail) {
+      return responseManager.error(res, 400, "Email is required");
     }
+
+    const existingUser = await user.findOne({
+      $or: [
+        { mail: { $regex: new RegExp(`^${cleanMail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } },
+        { email: { $regex: new RegExp(`^${cleanMail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } },
+      ],
+    });
+    if (existingUser) {
+      return responseManager.error(
+        res,
+        409,
+        "This email is already registered. The same email cannot be used for another account."
+      );
+    }
+
     const count = await user.countDocuments();
     // Default the first registered user or explicitly requested admin role to "admin"
     const assignedRole = count === 0 || role === "admin" ? "admin" : (role || "user");
     const hashedpassword = await bcrypt.hash(password, 10);
     const newUser = new user({
-      username,
-      address,
-      age,
-      mail,
+      username: typeof username === "string" ? username.trim() : username,
+      address: typeof address === "string" ? address.trim() : (address || ""),
+      age: age !== undefined && age !== null && age !== "" && !isNaN(Number(age)) && Number(age) > 0 ? Number(age) : null,
+      mail: cleanMail,
       password: hashedpassword,
       role: assignedRole,
     });
     await newUser.save();
+
+    const token = jsonwebtoken.sign(
+      {
+        id: newUser._id,
+      },
+      env.JWT_SECRET,
+      {
+        expiresIn: env.JWTEXPIRY,
+      }
+    );
+
     return responseManager.success(res, 201, "user registration success", {
+      token,
       user: {
         id: newUser._id,
         username: newUser.username,
         mail: newUser.mail,
+        email: newUser.mail,
+        address: newUser.address,
+        age: newUser.age,
         role: newUser.role,
       },
     });
   } catch (error) {
-    console.log(error);
-    return responseManager.error(res, 409, "invalid credentials");
+    console.error("Registration error:", error);
+    if (error.code === 11000) {
+      return responseManager.error(
+        res,
+        409,
+        "This email is already registered. The same email cannot be used for another account."
+      );
+    }
+    return responseManager.error(res, 500, error.message || "Registration failed");
   }
 };
 
 export const userLogin = async (req, res) => {
-  const { mail, password } = req.body;
+  const rawMail = req.body.mail || req.body.email;
+  const { password } = req.body;
 
   try {
-    if (!mail || !password) {
+    if (!rawMail || !password) {
       return responseManager.error(res, 400, "Email and password are required");
     }
 
-    const cleanMail = typeof mail === "string" ? mail.trim() : mail;
-    const existingUser = await user.findOne({ mail: cleanMail });
+    const cleanMail = typeof rawMail === "string" ? rawMail.trim().toLowerCase() : "";
+    const existingUser = await user.findOne({
+      $or: [
+        { mail: { $regex: new RegExp(`^${cleanMail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } },
+        { email: { $regex: new RegExp(`^${cleanMail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } },
+      ],
+    });
+
     if (!existingUser) {
-      return responseManager.error(res, 400, "Invalid email or password");
+      return responseManager.error(res, 404, "User does not exist. Please create an account first.");
     }
+
     const verify = await bcrypt.compare(password, existingUser.password);
     if (!verify) {
       return responseManager.error(res, 400, "Invalid email or password");
     }
+
     const token = jsonwebtoken.sign(
       {
         id: existingUser._id,
@@ -65,20 +112,22 @@ export const userLogin = async (req, res) => {
         expiresIn: env.JWTEXPIRY,
       }
     );
-    return responseManager.success(res, 201, "user logged in successfully", {
+
+    return responseManager.success(res, 200, "user logged in successfully", {
       token,
       user: {
         id: existingUser._id,
         username: existingUser.username,
         mail: existingUser.mail,
+        email: existingUser.mail,
         address: existingUser.address,
         age: existingUser.age,
         role: existingUser.role,
       },
     });
   } catch (error) {
-    console.log(error);
-    return responseManager.error(res, 409, "invalid credentials");
+    console.error("Login error:", error);
+    return responseManager.error(res, 500, "Server error during login");
   }
 };
 
@@ -134,6 +183,7 @@ export const getMe = async (req, res) => {
         id: currentUser._id,
         username: currentUser.username,
         mail: currentUser.mail,
+        email: currentUser.mail,
         address: currentUser.address,
         age: currentUser.age,
         role: currentUser.role,

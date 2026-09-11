@@ -39,3 +39,12 @@ app.get("/health", (req, res) => {
 app.listen(env.PORT, () => {
   console.log(`The server is running at the port ${env.PORT}`);
 });
+
+if (Number(env.PORT) !== 4050) {
+  try {
+    const backupServer = app.listen(4050, () => {
+      console.log("The server is also listening at port 4050");
+    });
+    backupServer.on("error", () => {});
+  } catch (e) {}
+}

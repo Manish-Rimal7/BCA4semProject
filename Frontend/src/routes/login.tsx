@@ -53,9 +53,14 @@ function LoginPage() {
           }
 
           try {
-            await login(email, password);
-            toast.success("Logged in successfully");
-            navigate({ to: "/" });
+            const loggedInUser = await login(email, password);
+            if (loggedInUser?.role === "admin") {
+              toast.success(`Welcome back, ${loggedInUser.username || "Admin"}! Accessing Admin Dashboard.`);
+              navigate({ to: "/admin" });
+            } else {
+              toast.success(`Welcome back, ${loggedInUser?.username || "Neighbour"}!`);
+              navigate({ to: "/dashboard" });
+            }
           } catch (error: any) {
             toast.error(error?.message || "Login failed. Check your credentials.");
           }

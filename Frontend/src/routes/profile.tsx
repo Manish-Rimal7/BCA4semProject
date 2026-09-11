@@ -22,6 +22,8 @@ import {
   Key,
   Sun,
   Moon,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { API_BASE_URL as API_URL } from "@/config/api";
 
@@ -49,6 +51,7 @@ function UserProfilePage() {
   const [editAddress, setEditAddress] = useState("");
   const [editAge, setEditAge] = useState<number | string>("");
   const [editPassword, setEditPassword] = useState("");
+  const [showEditPassword, setShowEditPassword] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchProfileData = async () => {
@@ -480,13 +483,28 @@ function UserProfilePage() {
                 <label className="font-semibold uppercase tracking-wider text-muted-foreground block mb-1 flex items-center gap-1">
                   <Key className="size-3 text-muted-foreground" /> New Password (Optional)
                 </label>
-                <input
-                  type="password"
-                  placeholder="Leave empty to keep current password"
-                  value={editPassword}
-                  onChange={(e) => setEditPassword(e.target.value)}
-                  className="w-full rounded-xl border border-input bg-background p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/40"
-                />
+                <div className="relative">
+                  <input
+                    type={showEditPassword ? "text" : "password"}
+                    placeholder="Leave empty to keep current password"
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    className="w-full rounded-xl border border-input bg-background p-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                    aria-label={showEditPassword ? "Hide password" : "Show password"}
+                    tabIndex={-1}
+                  >
+                    {showEditPassword ? (
+                      <EyeOff className="size-4 text-muted-foreground hover:text-foreground" />
+                    ) : (
+                      <Eye className="size-4 text-muted-foreground hover:text-foreground" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">

@@ -51,3 +51,6 @@ export const getAllFeedbacks = async (req, res) => {
     return responseManager.error(res, 500, "Server error");
   }
 };
+
+
+

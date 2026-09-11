@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { Sprout } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Sprout, Eye, EyeOff } from "lucide-react";
 
 export function AuthShell({
   title,
@@ -40,16 +40,39 @@ export function Field({
   type?: string;
   placeholder?: string;
 }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
+  const actualType = isPassword ? (showPassword ? "text" : "password") : type;
+
   return (
     <label className="block">
       <span className="mb-1.5 block text-sm font-medium">{label}</span>
-      <input
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition-shadow focus:ring-2 focus:ring-ring/40"
-      />
+      <div className="relative">
+        <input
+          type={actualType}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className={`h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition-shadow focus:ring-2 focus:ring-ring/40 ${
+            isPassword ? "pr-10" : ""
+          }`}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShowPassword((prev) => !prev)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none p-1"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            tabIndex={-1}
+          >
+            {showPassword ? (
+              <EyeOff className="size-4 text-muted-foreground hover:text-foreground transition-colors" />
+            ) : (
+              <Eye className="size-4 text-muted-foreground hover:text-foreground transition-colors" />
+            )}
+          </button>
+        )}
+      </div>
     </label>
   );
 }

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { API_BASE_URL as API_URL } from "@/config/api";
+import { formatNepalDateTime } from "@/lib/utils";
 
 export const Route = createFileRoute("/reviews")({
   head: () => ({
@@ -29,7 +30,7 @@ function ReviewsPage() {
   // Helpful thumbs-up state
   const [helpfulReviews, setHelpfulReviews] = useState<Set<string>>(() => {
     try {
-      const saved = localStorage.getItem("Re-Nest.helpfulReviews");
+      const saved = localStorage.getItem("helpful_reviews");
       return saved ? new Set(JSON.parse(saved)) : new Set();
     } catch {
       return new Set();
@@ -39,34 +40,29 @@ function ReviewsPage() {
   const handleToggleHelpful = (reviewId: string) => {
     setHelpfulReviews((prev) => {
       const next = new Set(prev);
-      const isAlreadyHelpful = next.has(reviewId);
-      if (isAlreadyHelpful) {
+      const isCurrentlyHelpful = next.has(reviewId);
+
+      if (isCurrentlyHelpful) {
         next.delete(reviewId);
-        toast.info("Removed helpful mark");
       } else {
         next.add(reviewId);
-        toast.success("Marked as helpful!");
       }
 
-      try {
-        localStorage.setItem("Re-Nest.helpfulReviews", JSON.stringify(Array.from(next)));
-      } catch {
-        /* ignore */
-      }
+      // Persist in localStorage
+      localStorage.setItem("helpful_reviews", JSON.stringify(Array.from(next)));
 
-      setReviews((prevRevs) =>
-        prevRevs.map((r) => {
-          if (r._id === reviewId) {
-            const currentLikes = r.likes || 0;
-            return {
-              ...r,
-              likes: isAlreadyHelpful ? Math.max(0, currentLikes - 1) : currentLikes + 1,
-            };
-          }
-          return r;
-        })
+      // Update the like count dynamically on the review item
+      setReviews((curr) =>
+        curr.map((r) =>
+          r._id === reviewId
+            ? { ...r, likes: Math.max(0, (r.likes || 0) + (isCurrentlyHelpful ? -1 : 1)) }
+            : r
+        )
       );
 
+      toast.success(
+        isCurrentlyHelpful ? "Marked review as unhelpful" : "Marked review as helpful 👍"
+      );
       return next;
     });
   };
@@ -88,13 +84,7 @@ function ReviewsPage() {
           comment: r.comment || `Rated "${r.product?.productName || "an item"}" ${r.rating} stars!`,
           productName: r.product?.productName,
           donorName: r.product?.addedBy?.username,
-          date: r.createdAt
-            ? new Date(r.createdAt).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
-            : "Recently",
+          date: r.createdAt ? formatNepalDateTime(r.createdAt) : "Recently",
           verified: true,
           likes: Math.floor(Math.random() * 8) + 3,
         }));
@@ -108,7 +98,7 @@ function ReviewsPage() {
           rating: 5,
           comment:
             "Re-Nest is amazing! Donated my old laptop to a college student in Lazimpat. The pickup was smooth and genuine.",
-          date: "2 days ago",
+          date: "Sep 7, 2026, 2:30 PM",
           verified: true,
           likes: 12,
         },
@@ -118,7 +108,7 @@ function ReviewsPage() {
           rating: 5,
           comment:
             "Received a wooden dining chair set for my new flat in Jhamsikhel. So grateful to the donor!",
-          date: "5 days ago",
+          date: "Sep 4, 2026, 11:15 AM",
           verified: true,
           likes: 8,
         },
@@ -128,7 +118,7 @@ function ReviewsPage() {
           rating: 4,
           comment:
             "Great initiative for zero-waste in Nepal. Listed a coffee maker and within an hour a neighbour requested it.",
-          date: "1 week ago",
+          date: "Sep 2, 2026, 4:45 PM",
           verified: true,
           likes: 15,
         },
@@ -138,9 +128,9 @@ function ReviewsPage() {
           rating: 5,
           comment:
             "The admin approval process ensures high quality listings. Highly recommend Re-Nest to everyone!",
-          date: "2 weeks ago",
+          date: "Aug 28, 2026, 9:20 AM",
           verified: true,
-          likes: 9,
+          likes: 19,
         },
       ];
 
@@ -207,7 +197,7 @@ function ReviewsPage() {
         username: user?.username || "Community Member",
         rating,
         comment: comment.trim(),
-        date: "Just now",
+        date: formatNepalDateTime(new Date()),
         verified: true,
         likes: 0,
       };

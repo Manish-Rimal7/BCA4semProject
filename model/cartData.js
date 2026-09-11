@@ -23,6 +23,6 @@ const cartSchema = new mongoose.Schema({
     ref: "user",
     required: true,
   },
-});
+}, { timestamps: true });
 
 export default mongoose.model("cart", cartSchema);

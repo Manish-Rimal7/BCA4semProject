@@ -14,14 +14,17 @@ export const existingProducts = async (req, res, next) => {
       );
     }
 
+    const trimmedName = typeof productName === "string" ? productName.trim() : productName;
     const existingProduct = await Product.findOne({
-      productName,
-      productCategory,
-      condition: finalCondition,
+      productName: { $regex: new RegExp(`^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") },
+      productCategory: typeof productCategory === "string" ? productCategory.trim() : productCategory,
+      condition: typeof finalCondition === "string" ? finalCondition.trim() : finalCondition,
+      addedBy: req.user._id,
+      status: { $ne: "given" },
     });
 
     if (existingProduct) {
-      return responseManager.error(res, 409, "Product already exists");
+      return responseManager.error(res, 409, "You have already listed this product");
     }
 
     next();

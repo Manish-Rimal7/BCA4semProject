@@ -1,5 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
+process.env.TZ = process.env.TZ || "Asia/Kathmandu";
+
 
 export const env = {
   JWTEXPIRY: process.env.JWTEXPIRY,
