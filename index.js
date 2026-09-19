@@ -39,6 +39,12 @@ app.listen(env.PORT, () => {
   console.log(`The server is running at the port ${env.PORT}`);
 });
 
+app.get("/health", (req, res) => {
+  res
+    .status(200)
+    .json({ success: true, status: "OK", message: "API is running..." });
+});
+
 if (Number(env.PORT) !== 4050) {
   try {
     const backupServer = app.listen(4050, () => {
