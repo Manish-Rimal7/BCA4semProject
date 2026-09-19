@@ -45,11 +45,11 @@ app.get("/health", (req, res) => {
     .json({ success: true, status: "OK", message: "API is running..." });
 });
 
-if (Number(env.PORT) !== 4050) {
-  try {
-    const backupServer = app.listen(4050, () => {
-      console.log("The server is also listening at port 4050");
-    });
-    backupServer.on("error", () => { });
-  } catch (e) { }
-}
+// // if (Number(env.PORT) !== 4050) {
+// //   try {
+// //     const backupServer = app.listen(4050, () => {
+// //       console.log("The server is also listening at port 4050");
+// //     });
+//     backupServer.on("error", () => { });
+//   } catch (e) { }
+// }
