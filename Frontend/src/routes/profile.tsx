@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { ItemCard } from "@/components/ItemCard";
+import { Loader } from "@/components/Loader";
 import {
   User,
   Mail,
@@ -41,9 +42,13 @@ export const Route = createFileRoute("/profile")({
 function UserProfilePage() {
   const { user, updateUser, toggleAdminRole } = useAuth();
   const { theme, setTheme } = useTheme();
+  const [profileUser, setProfileUser] = useState<any>(null);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [requestsData, setRequestsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Active user data preferring freshly fetched /getme data
+  const currentUser = profileUser || user;
 
   // Edit modal state
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -58,7 +63,34 @@ function UserProfilePage() {
     setLoading(true);
     try {
       const token = localStorage.getItem("Re-Nest.token");
-      const [dashRes, reqRes] = await Promise.all([
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      // 1. Fetch user data via /getme API endpoint
+      const fetchGetMe = async () => {
+        try {
+          let res = await fetch(`${API_URL}/getme`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) {
+            res = await fetch(`${API_URL}/getMe`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+          }
+          if (res.ok) {
+            const data = await res.json();
+            return data?.responseData?.user || data?.responseData || null;
+          }
+        } catch (e) {
+          console.warn("Could not fetch /getme:", e);
+        }
+        return null;
+      };
+
+      const [freshUser, dashRes, reqRes] = await Promise.all([
+        fetchGetMe(),
         fetch(`${API_URL}/dashboard/dashboard`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -67,14 +99,22 @@ function UserProfilePage() {
         }),
       ]);
 
-      const dashJson = await dashRes.json();
-      const reqJson = await reqRes.json();
-
-      if (dashRes.ok && (dashJson.responseCode === 200 || dashJson.responseCode === 201)) {
-        setDashboardData(dashJson.responseData || dashJson);
+      if (freshUser) {
+        setProfileUser(freshUser);
+        updateUser(freshUser);
       }
 
-      if (reqRes.ok && (reqJson.responseCode === 200 || reqJson.responseCode === 201)) {
+      const dashJson = await dashRes.json().catch(() => null);
+      const reqJson = await reqRes.json().catch(() => null);
+
+      if (dashRes.ok && dashJson && (dashJson.responseCode === 200 || dashJson.responseCode === 201)) {
+        setDashboardData(dashJson.responseData || dashJson);
+        if (!freshUser && dashJson.responseData?.user) {
+          setProfileUser(dashJson.responseData.user);
+        }
+      }
+
+      if (reqRes.ok && reqJson && (reqJson.responseCode === 200 || reqJson.responseCode === 201)) {
         setRequestsData(reqJson.responseData || reqJson);
       }
     } catch (error) {
@@ -90,9 +130,9 @@ function UserProfilePage() {
   }, []);
 
   const handleOpenEdit = () => {
-    setEditUsername(user?.username || "");
-    setEditAddress(user?.address || "");
-    setEditAge(user?.age || "");
+    setEditUsername(currentUser?.username || "");
+    setEditAddress(currentUser?.address || "");
+    setEditAge(currentUser?.age || "");
     setEditPassword("");
     setIsEditOpen(true);
   };
@@ -120,6 +160,7 @@ function UserProfilePage() {
       if (response.ok && (resData.responseCode === 200 || resData.responseCode === 201)) {
         toast.success("Profile updated successfully!");
         if (resData.responseData?.user) {
+          setProfileUser(resData.responseData.user);
           updateUser(resData.responseData.user);
         }
         setIsEditOpen(false);
@@ -136,11 +177,7 @@ function UserProfilePage() {
   };
 
   if (loading) {
-    return (
-      <div className="mx-auto max-w-5xl px-4 py-16 text-center text-muted-foreground">
-        Loading user profile…
-      </div>
-    );
+    return <Loader text="Loading user profile…" fullHeight />;
   }
 
   const products = dashboardData?.products || [];
@@ -149,14 +186,21 @@ function UserProfilePage() {
   const giftedProducts = requestsData?.giftedProducts || [];
   const receivedRatings = dashboardData?.receivedRatings || [];
 
-  // Calculate average donor rating
-  const avgRating =
-    receivedRatings.length > 0
-      ? (
-          receivedRatings.reduce((acc: number, r: any) => acc + (r.rating || 5), 0) /
-          receivedRatings.length
-        ).toFixed(1)
-      : "5.0";
+  // Calculate average donor rating strictly from other users (exclude self-ratings)
+  const currentUserId = currentUser?.id || currentUser?._id;
+  const otherUsersRatings = receivedRatings.filter((r: any) => {
+    const rUserId = r.user?._id || r.user?.id || (typeof r.user === "string" ? r.user : null);
+    if (!rUserId || !currentUserId) return true;
+    return String(rUserId) !== String(currentUserId);
+  });
+
+  const hasRatings = otherUsersRatings.length > 0;
+  const avgRating = hasRatings
+    ? (
+        otherUsersRatings.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0) /
+        otherUsersRatings.length
+      ).toFixed(1)
+    : null;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -168,19 +212,19 @@ function UserProfilePage() {
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-14 sm:-mt-16">
             <div className="flex items-end gap-4">
               <div className="flex size-24 items-center justify-center rounded-3xl bg-card text-primary text-3xl font-bold uppercase shadow-lg ring-4 ring-background border border-border">
-                {user?.username ? user.username.slice(0, 1) : "U"}
+                {currentUser?.username ? currentUser.username.slice(0, 1) : "U"}
               </div>
               <div className="mb-1">
                 <div className="flex items-center gap-2">
                   <h1 className="text-2xl font-bold tracking-tight">
-                    {user?.username || "Community Member"}
+                    {currentUser?.username || "Community Member"}
                   </h1>
                   <span className="rounded-full bg-emerald-500/10 px-3 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 capitalize">
-                    {user?.role || "Member"}
+                    {currentUser?.role || "Member"}
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                  <Mail className="size-3.5" /> {user?.mail}
+                  <Mail className="size-3.5" /> {currentUser?.mail || currentUser?.email}
                 </p>
               </div>
             </div>
@@ -189,7 +233,7 @@ function UserProfilePage() {
               <Button onClick={handleOpenEdit} variant="outline" className="rounded-full">
                 <Edit className="mr-1.5 size-4" /> Edit Profile
               </Button>
-              {user?.role === "admin" && (
+              {currentUser?.role === "admin" && (
                 <Button asChild className="rounded-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold">
                   <Link to="/admin">
                     <ShieldCheck className="mr-1.5 size-4" /> Admin Dashboard
@@ -250,8 +294,14 @@ function UserProfilePage() {
               <Star className="size-5 fill-current" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{avgRating} ★</p>
-              <p className="text-xs text-muted-foreground font-medium">Donor Rating</p>
+              <p className="text-2xl font-bold">
+                {hasRatings ? `${avgRating} ★` : "No ratings"}
+              </p>
+              <p className="text-xs text-muted-foreground font-medium">
+                {hasRatings
+                  ? `Average from ${otherUsersRatings.length} neighbour review${otherUsersRatings.length === 1 ? "" : "s"}`
+                  : "No neighbour ratings yet"}
+              </p>
             </div>
           </div>
         </div>
@@ -302,30 +352,30 @@ function UserProfilePage() {
                 <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">
                   Username
                 </dt>
-                <dd className="font-semibold text-foreground mt-0.5">{user?.username}</dd>
+                <dd className="font-semibold text-foreground mt-0.5">{currentUser?.username}</dd>
               </div>
               <div className="pt-2 border-t border-border/50">
                 <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">
                   Email Address
                 </dt>
-                <dd className="font-semibold text-foreground mt-0.5">{user?.mail}</dd>
+                <dd className="font-semibold text-foreground mt-0.5">{currentUser?.mail || currentUser?.email}</dd>
               </div>
-              {user?.address && (
+              {currentUser?.address && (
                 <div className="pt-2 border-t border-border/50">
                   <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">
                     Address / Location
                   </dt>
                   <dd className="font-semibold text-foreground mt-0.5 flex items-center gap-1">
-                    <MapPin className="size-3 text-muted-foreground" /> {user.address}
+                    <MapPin className="size-3 text-muted-foreground" /> {currentUser.address}
                   </dd>
                 </div>
               )}
-              {user?.age && (
+              {currentUser?.age && (
                 <div className="pt-2 border-t border-border/50">
                   <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">
                     Age
                   </dt>
-                  <dd className="font-semibold text-foreground mt-0.5">{user.age} years old</dd>
+                  <dd className="font-semibold text-foreground mt-0.5">{currentUser.age} years old</dd>
                 </div>
               )}
               <div className="pt-2 border-t border-border/50">
@@ -334,7 +384,7 @@ function UserProfilePage() {
                 </dt>
                 <dd className="font-semibold text-foreground mt-0.5 flex items-center gap-1.5">
                   <ShieldCheck className="size-3.5 text-emerald-600" />
-                  <span className="capitalize">{user?.role || "Member"}</span>
+                  <span className="capitalize">{currentUser?.role || "Member"}</span>
                 </dd>
               </div>
             </dl>

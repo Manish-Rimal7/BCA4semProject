@@ -34,7 +34,13 @@ function IndexPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
 
   const fetchProducts = () => {
-    fetch(`${API_BASE_URL}/products/getProducts`)
+    const token = localStorage.getItem("Re-Nest.token");
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    fetch(`${API_BASE_URL}/products/getProducts`, { headers })
       .then((res) => res.json())
       .then((data) => {
         if (data.responseCode === 200 && Array.isArray(data.responseData)) {
@@ -56,24 +62,11 @@ function IndexPage() {
     fetch(`${API_BASE_URL}/category/getAllCategories`)
       .then((res) => res.json())
       .then((data) => {
-        const predefined = [
-          { name: "Cloths" },
-          { name: "Books" },
-          { name: "Electronics" },
-          { name: "Furniture" },
-        ];
         if (data.responseCode === 200 && Array.isArray(data.responseData)) {
-          const dbCats = data.responseData;
-          // Merge unique by name
-          const merged = [...predefined];
-          dbCats.forEach((c: any) => {
-            if (!merged.some((m) => m.name.toLowerCase() === c.name.toLowerCase())) {
-              merged.push(c);
-            }
-          });
-          setCategories(merged);
+          const active = data.responseData.filter((c: any) => c.status === "active" || !c.status);
+          setCategories(active);
         } else {
-          setCategories(predefined);
+          setCategories([]);
         }
       })
       .catch((err) => console.error("Failed to fetch categories:", err));
@@ -81,6 +74,9 @@ function IndexPage() {
 
   useEffect(() => {
     fetchProducts();
+  }, [user]);
+
+  useEffect(() => {
     fetchCategories();
   }, []);
 
@@ -92,6 +88,34 @@ function IndexPage() {
   }, [searchQuery, selectedCategory]);
 
   const filteredItems = items.filter((item: any) => {
+    // 1. Exclude items added by the currently logged in user
+    if (user) {
+      const addedById = item.addedBy?._id || item.addedBy?.id || item.addedBy;
+      const currentUserId = user.id || (user as any)._id;
+      const isMyItem =
+        (addedById && currentUserId && addedById.toString() === currentUserId.toString()) ||
+        (item.addedBy?.mail && user.mail && item.addedBy.mail.toLowerCase() === user.mail.toLowerCase());
+      if (isMyItem) return false;
+    }
+
+    // 2. Handle given away items:
+    // If an item is given away, hide from general feed,
+    // but keep visible if the logged in user is one of the interested users
+    const isGivenAway = item.status === "given" || !!item.givenTo;
+    if (isGivenAway) {
+      if (!user) return false;
+      const currentUserId = user.id || (user as any)._id;
+      const isInterested = (item.interestedUsers || []).some((u: any) => {
+        const uId = u?.user?._id || u?.user?.id || u?.user || u;
+        const uMail = u?.user?.mail;
+        return (
+          (uId && currentUserId && uId.toString() === currentUserId.toString()) ||
+          (uMail && user.mail && uMail.toLowerCase() === user.mail.toLowerCase())
+        );
+      });
+      if (!isInterested) return false;
+    }
+
     const name = item.productName || item.title || "";
     const cat = item.productCategory || item.category || "";
     const condition = item.condition || "";

@@ -5,6 +5,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ItemCard } from "@/components/ItemCard";
+import { Loader } from "@/components/Loader";
 import { Package, Activity as ActivityIcon, Plus, CheckCircle, Clock, Heart } from "lucide-react";
 import { API_BASE_URL as API_URL } from "@/config/api";
 import { formatNepalDateTime } from "@/lib/utils";
@@ -120,8 +121,16 @@ function UserDashboardPage() {
     }
   };
 
-  const handleGiveItem = async (uuid: string, recipientId: string, recipientName: string) => {
-    if (!confirm(`Are you sure you want to give this item to ${recipientName}?`)) return;
+  const handleGiveItem = async (uuid: string, recipientId: string, recipientName: string, maxQty: number = 1) => {
+    let quantityToGive = 1;
+    if (maxQty > 1) {
+      const input = window.prompt(`How many units would you like to give to ${recipientName}? (1 to ${maxQty} available)`, "1");
+      if (!input) return;
+      quantityToGive = Math.max(1, Math.min(parseInt(input, 10) || 1, maxQty));
+    } else {
+      if (!confirm(`Are you sure you want to give this item to ${recipientName}?`)) return;
+    }
+
     try {
       const token = localStorage.getItem("Re-Nest.token");
       const response = await fetch(`${API_URL}/products/giveProduct/${uuid}`, {
@@ -130,11 +139,11 @@ function UserDashboardPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ recipientId }),
+        body: JSON.stringify({ recipientId, quantityToGive }),
       });
       const resData = await response.json();
       if (response.ok) {
-        toast.success(`🎉 Item successfully assigned to ${recipientName}!`);
+        toast.success(resData.responseMessage || `🎉 Successfully assigned ${quantityToGive} unit(s) to ${recipientName}!`);
         fetchDashboard();
       } else {
         toast.error(resData.responseMessage || "Failed to assign item");
@@ -151,11 +160,7 @@ function UserDashboardPage() {
   };
 
   if (loading) {
-    return (
-      <div className="mx-auto max-w-6xl px-4 py-12 text-center text-muted-foreground">
-        Loading dashboard…
-      </div>
-    );
+    return <Loader text="Loading dashboard…" fullHeight />;
   }
 
   const products = data?.products || [];
@@ -252,15 +257,33 @@ function UserDashboardPage() {
                   {/* Given To Recipient Banner */}
                   {p.givenTo && (
                     <div className="mt-3 flex items-center justify-between rounded-xl bg-emerald-500/15 border border-emerald-500/30 p-2.5 text-emerald-900 dark:text-emerald-300">
-                      <div className="flex items-center gap-2 text-xs font-semibold">
+                      <div className="flex items-center gap-2 text-xs font-semibold min-w-0">
                         <CheckCircle className="size-4 text-emerald-600 shrink-0" />
                         <span className="truncate">
                           Gifted to {p.givenTo.username || p.givenTo.mail || "Neighbour"}
                         </span>
                       </div>
-                      <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-700 text-white px-2 py-0.5 rounded-full shrink-0">
-                        Item Gifted
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDonorRatingModal({
+                              isOpen: true,
+                              uuid: p.UUID || p._id,
+                              productName: p.productName,
+                              recipientName: p.givenTo.username || p.givenTo.mail || "Neighbour",
+                            });
+                            setDonorRating(5);
+                            setDonorComment("");
+                          }}
+                          className="text-[11px] text-emerald-800 dark:text-emerald-300 font-bold underline hover:text-emerald-950 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Star className="size-3 fill-amber-500 text-amber-500" /> Rate
+                        </button>
+                        <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-700 text-white px-2 py-0.5 rounded-full">
+                          Gifted
+                        </span>
+                      </div>
                     </div>
                   )}
 
@@ -323,11 +346,11 @@ function UserDashboardPage() {
                                   </div>
                                 </div>
 
-                                {!p.givenTo ? (
+                                {(p.quantity === undefined || p.quantity > 0) && p.status !== "given" ? (
                                   <Button
                                     type="button"
                                     size="sm"
-                                    onClick={() => handleGiveItem(p.UUID || p._id, recipientId, uname)}
+                                    onClick={() => handleGiveItem(p.UUID || p._id, recipientId, uname, p.quantity || 1)}
                                     className="h-7 rounded-full bg-emerald-700 text-white hover:bg-emerald-800 text-[10px] font-semibold px-2.5 shrink-0"
                                   >
                                     Give Item
@@ -419,6 +442,7 @@ function UserDashboardPage() {
           )}
         </div>
       </div>
+
     </div>
   );
 }

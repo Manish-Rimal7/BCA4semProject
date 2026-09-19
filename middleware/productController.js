@@ -145,11 +145,13 @@ export const addProduct = async (req, res) => {
     productModel,
     productFeatures,
     productImage,
+    quantity,
   } = req.body;
 
   const finalLocation = location || productUseful;
   const finalCondition = condition || productModel;
   const finalDescription = description || productFeatures;
+  const parsedQuantity = Math.max(1, parseInt(quantity, 10) || 1);
 
   if (
     !productName ||
@@ -170,6 +172,8 @@ export const addProduct = async (req, res) => {
       condition: finalCondition,
       description: finalDescription,
       productImage: productImage || "",
+      quantity: parsedQuantity,
+      initialQuantity: parsedQuantity,
       isApproved: false,
       approvalStatus: "pending",
       addedBy: req.user._id,
@@ -211,11 +215,35 @@ export const addProduct = async (req, res) => {
 
 export const getAllProducts = async (req, res) => {
   try {
-    const filter = req.query.all === "true" ? {} : { isApproved: true };
+    let filter;
+    if (req.query.all === "true") {
+      filter = {};
+    } else if (req.user && req.user._id) {
+      filter = {
+        isApproved: true,
+        addedBy: { $ne: req.user._id },
+        $or: [
+          { status: { $ne: "given" } },
+          {
+            status: "given",
+            "interestedUsers.user": req.user._id,
+          },
+        ],
+      };
+    } else {
+      filter = {
+        isApproved: true,
+        status: { $ne: "given" },
+      };
+    }
+
     const products = await Product.find(filter)
       .populate("addedBy", "username mail")
       .populate("interestedUsers.user", "username mail")
-      .populate("givenTo", "username mail");
+      .populate("givenTo", "username mail")
+      .sort({ createdAt: -1 })
+      .lean();
+
     return responseManager.success(
       res,
       200,
@@ -293,7 +321,7 @@ export const toggleInterest = async (req, res) => {
 
 export const giveProduct = async (req, res) => {
   const { UUID } = req.params;
-  const { recipientId } = req.body;
+  const { recipientId, quantityToGive } = req.body;
   const userId = req.user._id;
 
   if (!recipientId) {
@@ -313,23 +341,50 @@ export const giveProduct = async (req, res) => {
       return responseManager.error(res, 403, "Only the owner can assign this product");
     }
 
+    const currentQty = typeof product.quantity === "number" ? product.quantity : 1;
+    const toGive = Math.max(1, Math.min(parseInt(quantityToGive, 10) || 1, currentQty > 0 ? currentQty : 1));
+    const remaining = Math.max(0, currentQty - toGive);
+
+    product.quantity = remaining;
+    if (!product.givenRecipients) {
+      product.givenRecipients = [];
+    }
+    product.givenRecipients.push({
+      user: recipientId,
+      quantity: toGive,
+      givenAt: new Date(),
+    });
     product.givenTo = recipientId;
-    product.status = "given";
+
+    if (remaining === 0) {
+      product.status = "given";
+    } else {
+      product.status = "available";
+    }
+
     await product.save();
 
     await makeActivity(
       userId,
       "PRODUCT_GIVEN",
       product._id,
-      `Assigned product "${product.productName}" to a neighbour`
+      `Given ${toGive} unit(s) of "${product.productName}" to a neighbour (${remaining} remaining)`
     );
 
     const updatedProduct = await Product.findOne(filter)
       .populate("addedBy", "username mail")
       .populate("interestedUsers.user", "username mail")
-      .populate("givenTo", "username mail");
+      .populate("givenTo", "username mail")
+      .populate("givenRecipients.user", "username mail");
 
-    return responseManager.success(res, 200, "Item assigned successfully!", updatedProduct);
+    return responseManager.success(
+      res,
+      200,
+      remaining > 0
+        ? `Successfully assigned ${toGive} unit(s)! ${remaining} unit(s) remaining for donation.`
+        : "Item fully given away!",
+      updatedProduct
+    );
   } catch (error) {
     console.error(error);
     return responseManager.error(res, 500, "Server error");
@@ -427,7 +482,9 @@ export const getProduct = async (req, res) => {
     const product = await Product.findOne(filter)
       .populate("addedBy", "username mail")
       .populate("interestedUsers.user", "username mail")
-      .populate("givenTo", "username mail");
+      .populate("givenTo", "username mail")
+      .populate("givenRecipients.user", "username mail")
+      .lean();
 
     if (!product) {
       return responseManager.error(res, 404, "Product does not exist");
@@ -435,7 +492,9 @@ export const getProduct = async (req, res) => {
 
     const ratings = await Rating.find({
       product: product._id,
-    }).populate("user", "username");
+    })
+      .populate("user", "username")
+      .lean();
 
     return responseManager.success(res, 200, "Product fetched successfully", {
       product,
@@ -497,24 +556,24 @@ export const getMyRequests = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    const allProducts = await Product.find({})
-      .populate("addedBy", "username mail")
-      .populate("interestedUsers.user", "username mail")
-      .populate("givenTo", "username mail");
-
-    const requestedProducts = allProducts.filter((product) => {
-      if (!product.interestedUsers || !Array.isArray(product.interestedUsers)) return false;
-      return product.interestedUsers.some((u) => {
-        const uId = u?.user?._id || u?.user || u;
-        return uId && uId.toString() === userId.toString();
-      });
-    });
-
-    const giftedProducts = allProducts.filter((product) => {
-      if (!product.givenTo) return false;
-      const gId = product.givenTo._id || product.givenTo;
-      return gId && gId.toString() === userId.toString();
-    });
+    const [requestedProducts, giftedProducts] = await Promise.all([
+      Product.find({
+        "interestedUsers.user": userId,
+      })
+        .populate("addedBy", "username mail")
+        .populate("interestedUsers.user", "username mail")
+        .populate("givenTo", "username mail")
+        .sort({ createdAt: -1 })
+        .lean(),
+      Product.find({
+        givenTo: userId,
+      })
+        .populate("addedBy", "username mail")
+        .populate("interestedUsers.user", "username mail")
+        .populate("givenTo", "username mail")
+        .sort({ createdAt: -1 })
+        .lean(),
+    ]);
 
     return responseManager.success(res, 200, "User requests and gifts fetched successfully", {
       requestedProducts,

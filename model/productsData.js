@@ -57,6 +57,18 @@ const productSchema = mongoose.Schema({
     default: 0,
   },
 
+  quantity: {
+    type: Number,
+    default: 1,
+    min: 0,
+  },
+
+  initialQuantity: {
+    type: Number,
+    default: 1,
+    min: 1,
+  },
+
   addedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "user",
@@ -68,6 +80,23 @@ const productSchema = mongoose.Schema({
     ref: "user",
     default: null,
   },
+
+  givenRecipients: [
+    {
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+      },
+      quantity: {
+        type: Number,
+        default: 1,
+      },
+      givenAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
 
   interestedUsers: [
     {
@@ -86,5 +115,10 @@ const productSchema = mongoose.Schema({
     },
   ],
 }, { timestamps: true });
+
+productSchema.index({ isApproved: 1, createdAt: -1 });
+productSchema.index({ status: 1 });
+productSchema.index({ addedBy: 1 });
+productSchema.index({ "interestedUsers.user": 1 });
 
 export default mongoose.model("products", productSchema);

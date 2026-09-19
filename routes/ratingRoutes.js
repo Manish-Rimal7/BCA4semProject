@@ -5,6 +5,7 @@ import credential from "../middleware/tokenChecker.js";
 const router = express.Router();
 
 router.post("/addRating/:UUID", credential, addRating);
+router.post("/addRating", credential, addRating);
 router.get("/getAllRatings", getAllRatings);
 
 export default router;

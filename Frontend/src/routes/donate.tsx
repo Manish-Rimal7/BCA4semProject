@@ -35,16 +35,12 @@ function DonatePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("Cloths");
+  const [category, setCategory] = useState("");
   const [customCategory, setCustomCategory] = useState("");
-  const [dbCategories, setDbCategories] = useState<string[]>([
-    "Cloths",
-    "Books",
-    "Electronics",
-    "Furniture",
-  ]);
+  const [dbCategories, setDbCategories] = useState<string[]>([]);
   const [condition, setCondition] = useState("Good");
   const [location, setLocation] = useState("");
+  const [quantity, setQuantity] = useState<number>(1);
   const [imagePreview, setImagePreview] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -53,14 +49,16 @@ function DonatePage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.responseCode === 200 && Array.isArray(data.responseData)) {
-          const names = data.responseData.map((c: any) => c.name);
-          // Combine predefined categories with DB categories uniquely
-          const combined = Array.from(
-            new Set(["Cloths", "Books", "Electronics", "Furniture", ...names])
-          );
-          setDbCategories(combined);
-          if (combined.length > 0) {
-            setCategory(combined[0]);
+          const names: string[] = data.responseData
+            .filter((c: any) => c.status === "active" || !c.status)
+            .map((c: any) => c.name?.trim())
+            .filter(Boolean);
+          const unique = Array.from(new Set(names));
+          setDbCategories(unique);
+          if (unique.length > 0 && unique[0]) {
+            setCategory(unique[0]);
+          } else {
+            setCategory("__SUGGEST_NEW__");
           }
         }
       })
@@ -70,13 +68,41 @@ function DonatePage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image size must be less than 5MB");
+      if (file.size > 15 * 1024 * 1024) {
+        toast.error("Image file is too large (max 15MB)");
         return;
       }
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1000;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL("image/jpeg", 0.75);
+            setImagePreview(compressed);
+          } else {
+            setImagePreview(event.target?.result as string);
+          }
+        };
+        img.src = event.target?.result as string;
       };
       reader.readAsDataURL(file);
     }
@@ -122,6 +148,7 @@ function DonatePage() {
                 location: location,
                 description: description,
                 productImage: imagePreview,
+                quantity: Math.max(1, quantity || 1),
               }),
             });
 
@@ -129,7 +156,7 @@ function DonatePage() {
 
             if (response.ok && (data.responseCode === 200 || data.responseCode === 201)) {
               toast.success("Item submitted — pending admin approval!");
-              navigate({ to: "/" });
+              navigate({ to: "/donations" });
             } else {
               toast.error(data.responseMessage || data.message || "Failed to list item");
             }
@@ -191,8 +218,41 @@ function DonatePage() {
           label="What is it?"
           value={title}
           onChange={setTitle}
-          placeholder="item's name"
+          placeholder="item's name (e.g. Vintage Stainless Spoons)"
         />
+
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="block text-sm font-medium">Quantity Available for Donation</span>
+            <span className="text-xs text-muted-foreground">e.g. 1 table, 6 spoons, 12 books</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              className="size-10 flex items-center justify-center rounded-xl border border-border bg-secondary hover:bg-secondary/80 font-bold text-lg transition-colors"
+            >
+              -
+            </button>
+            <input
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              className="w-24 text-center rounded-xl border border-border bg-background p-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-600/40"
+            />
+            <button
+              type="button"
+              onClick={() => setQuantity((q) => q + 1)}
+              className="size-10 flex items-center justify-center rounded-xl border border-border bg-secondary hover:bg-secondary/80 font-bold text-lg transition-colors"
+            >
+              +
+            </button>
+            <span className="text-xs text-muted-foreground">
+              {quantity === 1 ? "unit for donation" : "identical units available"}
+            </span>
+          </div>
+        </div>
 
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium">Description</span>

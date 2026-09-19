@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Lock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/Loader";
 
 export function ProtectedRoute({
   children,
@@ -14,7 +15,7 @@ export function ProtectedRoute({
   const { user, ready } = useAuth();
 
   if (!ready) {
-    return <div className="mx-auto max-w-6xl px-4 py-20 text-muted-foreground">Loading…</div>;
+    return <Loader text="Verifying authentication…" fullHeight />;
   }
 
   if (!user || (adminOnly && user.role !== "admin")) {

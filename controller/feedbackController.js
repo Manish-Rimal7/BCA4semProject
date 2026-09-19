@@ -1,5 +1,6 @@
 import Feedback from "../model/feedbackData.js";
 import { responseManager } from "../middleware/responseManager.js";
+import { sendFeedbackEmail } from "../services/emailService.js";
 
 export const submitFeedback = async (req, res) => {
   const { name, email, type, subject, message } = req.body;
@@ -9,23 +10,32 @@ export const submitFeedback = async (req, res) => {
   }
 
   try {
+    const validTypes = ["report", "bug", "bug_report", "suggestion", "feedback", "inappropriate", "complaint", "other"];
+    const feedbackType = validTypes.includes(type?.toLowerCase()) ? type.toLowerCase() : "feedback";
     const newFeedback = new Feedback({
       user: req.user ? req.user._id : null,
       name,
       email,
-      type: type || "feedback",
+      type: feedbackType,
       subject,
       message,
     });
 
     await newFeedback.save();
 
-    console.log(`[FEEDBACK NOTIFICATION TO ] From: ${email} (${name}) | Type: ${type} | Subject: ${subject}`);
+    // Send email notification to configured receiver
+    await sendFeedbackEmail({
+      name,
+      email,
+      type: feedbackType,
+      subject,
+      message,
+    });
 
     return responseManager.success(
       res,
       201,
-      "Thank you! Your feedback/report has been received and logged.",
+      "Thank you! Your feedback/report has been received.",
       newFeedback
     );
   } catch (error) {

@@ -4,8 +4,9 @@ import { toast } from "sonner";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { ItemCard } from "@/components/ItemCard";
+import { Loader } from "@/components/Loader";
 import { Button } from "@/components/ui/button";
-import { Package, Plus, CheckCircle, Clock } from "lucide-react";
+import { Package, Plus, CheckCircle, Clock, Gift } from "lucide-react";
 import { API_BASE_URL as API_URL } from "@/config/api";
 
 export const Route = createFileRoute("/donations")({
@@ -28,21 +29,18 @@ function MyDonationsPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem("Re-Nest.token");
-      const response = await fetch(`${API_URL}/dashboard/dashboard`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const res = await fetch(`${API_URL}/products/userProducts`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      const resData = await response.json();
-      if (response.ok && (resData.responseCode === 200 || resData.responseCode === 201)) {
-        const data = resData.responseData || resData;
-        setProducts(data.products || []);
+      const data = await res.json();
+      if (res.ok && (data.responseCode === 200 || data.responseCode === 201)) {
+        setProducts(data.responseData || []);
       } else {
-        toast.error(resData.responseMessage || "Failed to load donations");
+        toast.error(data.responseMessage || "Failed to load donations");
       }
-    } catch (error) {
-      console.error(error);
-      toast.error("Network error loading donations");
+    } catch (err) {
+      console.error(err);
+      toast.error("Error loading donations");
     } finally {
       setLoading(false);
     }
@@ -53,11 +51,7 @@ function MyDonationsPage() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-center text-muted-foreground">
-        Loading your donations…
-      </div>
-    );
+    return <Loader text="Loading your donations…" fullHeight />;
   }
 
   return (
@@ -113,13 +107,15 @@ function MyDonationsPage() {
 
               <ItemCard item={p} onInterestToggle={fetchDonations} />
 
-              <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between">
+              <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between gap-2">
                 <span className="text-xs text-muted-foreground">
-                  {p.interestedUsers?.length || 0} interested neighbour(s)
+                  {p.interestedUsers?.length || 0} interested
                 </span>
-                <Button asChild size="sm" variant="outline" className="rounded-full text-xs">
-                  <Link to="/dashboard">Manage in Dashboard</Link>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button asChild size="sm" variant="outline" className="rounded-full text-xs">
+                    <Link to="/dashboard">Dashboard</Link>
+                  </Button>
+                </div>
               </div>
             </div>
           ))}

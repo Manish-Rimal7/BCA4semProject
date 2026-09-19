@@ -15,6 +15,14 @@ router.post("/userRegister", validator(registerSchema), userRegistration);
 router.post("/userLogin", userLogin);
 router.post("/updateProfile", credential, updateProfile);
 router.get("/getMe", credential, getMe);
+router.get("/getme", credential, getMe);
+router.get("/profile", credential, getMe);
 router.post("/toggleAdminRole", credential, toggleAdminRole);
 
 export default router;
+
+
+//backend ma vako category matra dekhaune ani aru process same 
+//unit select garepaxi pani after approval unit ma selected unit dekhaunu paryo
+//feed ma afnu item nadekhaune
+//intrested vitra gayera herna milne 

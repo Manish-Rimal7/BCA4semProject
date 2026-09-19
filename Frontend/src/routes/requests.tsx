@@ -5,6 +5,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { ItemCard } from "@/components/ItemCard";
 import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/Loader";
 import { Heart, Gift, Sparkles, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { API_BASE_URL as API_URL } from "@/config/api";
@@ -29,7 +30,8 @@ function MyRequestsPage() {
 
   // Review modal state for receiver after process completion
   const [selectedProductForReview, setSelectedProductForReview] = useState<any>(null);
-  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewProductRating, setReviewProductRating] = useState<number>(5);
+  const [reviewDonorRating, setReviewDonorRating] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>("");
   const [isSubmittingReview, setIsSubmittingReview] = useState<boolean>(false);
 
@@ -52,17 +54,21 @@ function MyRequestsPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          rating: reviewRating,
+          productRating: reviewProductRating,
+          donorRating: reviewDonorRating,
+          rating: reviewProductRating,
           comment: reviewComment.trim(),
+          experienceType: "receiver",
         }),
       });
 
       const resData = await response.json();
       if (response.ok && (resData.responseCode === 200 || resData.responseCode === 201)) {
-        toast.success("Review submitted! Thank you for sharing your feedback with the community.");
+        toast.success("Ratings submitted! Thank you for sharing your feedback with the community.");
         setSelectedProductForReview(null);
         setReviewComment("");
-        setReviewRating(5);
+        setReviewProductRating(5);
+        setReviewDonorRating(5);
         fetchMyRequests();
       } else {
         toast.error(resData.responseMessage || "Failed to submit review");
@@ -105,11 +111,7 @@ function MyRequestsPage() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-center text-muted-foreground">
-        Loading your requested items and gifts…
-      </div>
-    );
+    return <Loader text="Loading your requested items and gifts…" fullHeight />;
   }
 
   return (
@@ -202,9 +204,18 @@ function MyRequestsPage() {
                     {/* Request Status Banner */}
                     <div className="mt-3 space-y-2">
                       {isGiftedToMe ? (
-                        <div className="flex items-center gap-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 p-2.5 text-xs text-emerald-900 dark:text-emerald-300 font-semibold">
-                          <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
-                          <span>🎉 The donor gifted this item to you!</span>
+                        <div className="flex items-center justify-between gap-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 p-2.5 text-xs text-emerald-900 dark:text-emerald-300 font-semibold">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
+                            <span className="truncate">🎉 The donor gifted this item to you!</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedProductForReview(p)}
+                            className="text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-2.5 py-1 rounded-full shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
+                          >
+                            <Sparkles className="size-3" /> Rate
+                          </button>
                         </div>
                       ) : isGiftedToOther ? (
                         <div className="flex items-center gap-2 rounded-xl bg-amber-500/15 border border-amber-500/30 p-2.5 text-xs text-amber-900 dark:text-amber-300 font-medium">
@@ -320,28 +331,55 @@ function MyRequestsPage() {
             </div>
 
             <form onSubmit={handleReviewSubmit} className="mt-4 space-y-4">
+              {/* 1. RATE PRODUCT */}
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
-                  Rating for Donor ({selectedProductForReview.addedBy?.username || "Donor"})
+                  1. Product Condition & Quality
                 </label>
                 <div className="flex items-center gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
                       type="button"
-                      onClick={() => setReviewRating(star)}
+                      onClick={() => setReviewProductRating(star)}
                       className="p-1 hover:scale-110 transition-transform"
                     >
                       <Heart
                         className={`size-6 ${
-                          star <= reviewRating
+                          star <= reviewProductRating
+                            ? "fill-emerald-500 text-emerald-500"
+                            : "text-muted-foreground/30"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  <span className="ml-2 text-sm font-bold text-emerald-600">{reviewProductRating} Stars</span>
+                </div>
+              </div>
+
+              {/* 2. RATE DONOR */}
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
+                  2. Donor Kindness & Communication ({selectedProductForReview.addedBy?.username || "Donor"})
+                </label>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewDonorRating(star)}
+                      className="p-1 hover:scale-110 transition-transform"
+                    >
+                      <Heart
+                        className={`size-6 ${
+                          star <= reviewDonorRating
                             ? "fill-amber-400 text-amber-400"
                             : "text-muted-foreground/30"
                         }`}
                       />
                     </button>
                   ))}
-                  <span className="ml-2 text-sm font-bold text-amber-600">{reviewRating} Stars</span>
+                  <span className="ml-2 text-sm font-bold text-amber-600">{reviewDonorRating} Stars</span>
                 </div>
               </div>
 

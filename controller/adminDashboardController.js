@@ -7,34 +7,37 @@ import { responseManager } from "../middleware/responseManager.js";
 
 export const AdminDashboard = async (req, res) => {
   try {
-    const totalUsers = await User.countDocuments();
-
-    const totalProducts = await Product.countDocuments();
-
-    const totalCategories = await Category.countDocuments();
-
-    const totalRatings = await Rating.countDocuments();
-
-    const allUsers = await User.find()
-      .select("-password")
-      .sort({ createdAt: -1 });
-
-    const recentProducts = await Product.find()
-      .sort({ createdAt: -1 })
-      .limit(5);
-
-    const pendingProducts = await Product.find({ isApproved: false })
-      .populate("addedBy", "username mail")
-      .sort({ createdAt: -1 });
-
-    const recentActivities = await Activity.find()
-      .populate("user", "username")
-      .populate("product", "productName")
-      .sort({ createdAt: -1 })
-      .limit(15);
+    const [
+      totalUsers,
+      totalProducts,
+      totalCategories,
+      totalRatings,
+      allUsers,
+      recentProducts,
+      pendingProducts,
+      recentActivities,
+      activeCategories,
+    ] = await Promise.all([
+      User.countDocuments(),
+      Product.countDocuments(),
+      Category.countDocuments(),
+      Rating.countDocuments(),
+      User.find().select("-password").sort({ createdAt: -1 }).lean(),
+      Product.find().sort({ createdAt: -1 }).limit(5).lean(),
+      Product.find({ isApproved: false })
+        .populate("addedBy", "username mail")
+        .sort({ createdAt: -1 })
+        .lean(),
+      Activity.find()
+        .populate("user", "username")
+        .populate("product", "productName")
+        .sort({ createdAt: -1 })
+        .limit(15)
+        .lean(),
+      Category.find({ status: "active" }).lean(),
+    ]);
 
     // Identify pending products submitted under a category that is not yet in MongoDB
-    const activeCategories = await Category.find({ status: "active" });
     const dbCatNamesLower = new Set(activeCategories.map((c) => c.name.toLowerCase()));
 
     const newCategoryAlerts = pendingProducts.filter(

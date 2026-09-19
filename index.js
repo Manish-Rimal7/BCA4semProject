@@ -9,6 +9,8 @@ import { db } from "./config/db.js";
 import { env } from "./env.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import feedbackRouter from "./routes/feedbackRoute.js";
+import credential from "./middleware/tokenChecker.js";
+import { getMe } from "./controller/userAuth.js";
 await db();
 
 const app = express();
@@ -29,12 +31,9 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/rating", ratingRouter);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/feedback", feedbackRouter);
-
-app.get("/health", (req, res) => {
-  res
-    .status(200)
-    .json({ success: true, status: "OK", message: "API is running..." });
-});
+app.get("/api/profile", credential, getMe);
+app.get("/getme", credential, getMe);
+app.get("/getMe", credential, getMe);
 
 app.listen(env.PORT, () => {
   console.log(`The server is running at the port ${env.PORT}`);
@@ -45,6 +44,6 @@ if (Number(env.PORT) !== 4050) {
     const backupServer = app.listen(4050, () => {
       console.log("The server is also listening at port 4050");
     });
-    backupServer.on("error", () => {});
-  } catch (e) {}
+    backupServer.on("error", () => { });
+  } catch (e) { }
 }

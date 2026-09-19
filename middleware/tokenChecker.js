@@ -32,4 +32,27 @@ const credential = async (req, res, next) => {
     return responseManager.error(res, 401, "Unauthorized or expired token");
   }
 };
+
+export const optionalCredential = async (req, res, next) => {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith("Bearer ")) {
+    return next();
+  }
+
+  const token = header.split(" ")[1];
+  try {
+    const decoded = jsonwebtoken.verify(token, env.JWT_SECRET);
+    if (decoded && (decoded.id || decoded._id)) {
+      const userId = decoded.id || decoded._id;
+      const user = await userData.findById(userId).lean();
+      if (user) {
+        req.user = user;
+      }
+    }
+  } catch (error) {
+    // Ignore invalid token in optional authentication
+  }
+  next();
+};
+
 export default credential;

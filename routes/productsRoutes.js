@@ -11,13 +11,13 @@ import {
   giveProduct,
   getMyRequests,
 } from "../middleware/productController.js";
-import credential from "../middleware/tokenChecker.js";
+import credential, { optionalCredential } from "../middleware/tokenChecker.js";
 import adminChecker from "../middleware/adminChecker.js";
 
 const router = express.Router();
 
 router.post("/addProduct", credential, existingProducts, addProduct);
-router.get("/getProducts", getAllProducts);
+router.get("/getProducts", optionalCredential, getAllProducts);
 router.get("/myRequests", credential, getMyRequests);
 router.get("/getProducts/:UUID", getProduct);
 router.post("/deleteProduct/:UUID", credential, deleteProduct);

@@ -21,6 +21,7 @@ export function ItemCard({ item, onInterestToggle }: { item: any; onInterestTogg
     item.image ||
     "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&auto=format&fit=crop&q=60";
   const status = item.status || "available";
+  const quantity = item.quantity && Number(item.quantity) > 1 ? Number(item.quantity) : 1;
 
   const interestedList = item.interestedUsers || [];
   const count = interestedList.length || item.requestCount || 0;
@@ -98,12 +99,25 @@ export function ItemCard({ item, onInterestToggle }: { item: any; onInterestTogg
         <div className="absolute left-3 top-3">
           <StatusPill status={status} />
         </div>
+        {quantity > 1 && (
+          <div className="absolute right-3 top-3">
+            <span className="inline-flex items-center rounded-full bg-black/65 backdrop-blur-xs px-2.5 py-1 text-[11px] font-semibold text-white tracking-wide shadow-xs border border-white/15">
+              Qty: {quantity}
+            </span>
+          </div>
+        )}
       </Link>
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
           <span>{category}</span>
           <span className="size-1 rounded-full bg-border" />
           <span>{condition}</span>
+          {quantity > 1 && (
+            <>
+              <span className="size-1 rounded-full bg-border" />
+              <span className="font-semibold text-emerald-700 dark:text-emerald-400">{quantity} units</span>
+            </>
+          )}
         </div>
         <Link to="/items/$id" params={{ id }}>
           <h3 className="text-base font-semibold leading-snug hover:text-primary transition-colors">{title}</h3>
@@ -120,20 +134,26 @@ export function ItemCard({ item, onInterestToggle }: { item: any; onInterestTogg
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={handleButtonClick}
-          disabled={loading}
-          className={cn(
-            "mt-2 flex w-full items-center justify-center gap-1.5 rounded-full py-2 text-xs font-semibold transition-all duration-200",
-            isInterested
-              ? "bg-emerald-700 text-white hover:bg-emerald-800 shadow-sm"
-              : "bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground border border-border/40"
-          )}
-        >
-          <Heart className={cn("size-3.5", isInterested && "fill-current text-white")} />
-          {isInterested ? "Interested" : "I'm Interested"}
-        </button>
+        {status === "given" ? (
+          <div className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full py-2 text-xs font-semibold bg-muted text-muted-foreground border border-border/40 cursor-not-allowed">
+            <span>Given away to neighbour</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleButtonClick}
+            disabled={loading}
+            className={cn(
+              "mt-2 flex w-full items-center justify-center gap-1.5 rounded-full py-2 text-xs font-semibold transition-all duration-200",
+              isInterested
+                ? "bg-emerald-700 text-white hover:bg-emerald-800 shadow-sm"
+                : "bg-secondary text-foreground hover:bg-primary hover:text-primary-foreground border border-border/40"
+            )}
+          >
+            <Heart className={cn("size-3.5", isInterested && "fill-current text-white")} />
+            {isInterested ? "Interested" : "I'm Interested"}
+          </button>
+        )}
       </div>
 
       <InterestModal

@@ -178,16 +178,21 @@ export const getMe = async (req, res) => {
     if (!currentUser) {
       return responseManager.error(res, 404, "User not found");
     }
+    const userPayload = {
+      id: currentUser._id,
+      _id: currentUser._id,
+      username: currentUser.username,
+      mail: currentUser.mail,
+      email: currentUser.mail,
+      address: currentUser.address || "",
+      age: currentUser.age,
+      role: currentUser.role,
+      createdAt: currentUser.createdAt,
+      updatedAt: currentUser.updatedAt,
+    };
     return responseManager.success(res, 200, "User profile retrieved", {
-      user: {
-        id: currentUser._id,
-        username: currentUser.username,
-        mail: currentUser.mail,
-        email: currentUser.mail,
-        address: currentUser.address,
-        age: currentUser.age,
-        role: currentUser.role,
-      },
+      user: userPayload,
+      ...userPayload,
     });
   } catch (error) {
     console.error(error);

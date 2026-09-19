@@ -16,7 +16,7 @@ const feedbackSchema = mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["report", "suggestion", "feedback", "inappropriate"],
+    enum: ["report", "bug", "bug_report", "suggestion", "feedback", "inappropriate", "complaint", "other"],
     default: "feedback",
   },
   subject: {

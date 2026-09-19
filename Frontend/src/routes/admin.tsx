@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { ItemCard } from "@/components/ItemCard";
+import { Loader } from "@/components/Loader";
 import {
   Users,
   Package,
@@ -266,11 +267,7 @@ function AdminDashboardPage() {
   };
 
   if (loading) {
-    return (
-      <div className="mx-auto max-w-6xl px-4 py-12 text-center text-muted-foreground">
-        Loading admin control panel…
-      </div>
-    );
+    return <Loader text="Loading admin control panel…" fullHeight />;
   }
 
   const stats = data?.statistics || {};
@@ -563,6 +560,8 @@ function AdminDashboardPage() {
                       <div className="font-semibold text-sm mb-1 line-clamp-1">{p.productName}</div>
                       <div className="text-xs text-muted-foreground mb-3 flex items-center gap-2">
                         <span>Category: <strong>{p.productCategory}</strong></span>
+                        <span>•</span>
+                        <span>Qty: <strong>{p.quantity || 1}</strong></span>
                         <span>•</span>
                         <span>{p.location || "Local"}</span>
                       </div>
