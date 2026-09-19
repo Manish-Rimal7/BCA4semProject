@@ -263,27 +263,9 @@ function UserDashboardPage() {
                           Gifted to {p.givenTo.username || p.givenTo.mail || "Neighbour"}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDonorRatingModal({
-                              isOpen: true,
-                              uuid: p.UUID || p._id,
-                              productName: p.productName,
-                              recipientName: p.givenTo.username || p.givenTo.mail || "Neighbour",
-                            });
-                            setDonorRating(5);
-                            setDonorComment("");
-                          }}
-                          className="text-[11px] text-emerald-800 dark:text-emerald-300 font-bold underline hover:text-emerald-950 flex items-center gap-1 cursor-pointer"
-                        >
-                          <Star className="size-3 fill-amber-500 text-amber-500" /> Rate
-                        </button>
-                        <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-700 text-white px-2 py-0.5 rounded-full">
-                          Gifted
-                        </span>
-                      </div>
+                      <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-700 text-white px-2 py-0.5 rounded-full">
+                        Gifted
+                      </span>
                     </div>
                   )}
 

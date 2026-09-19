@@ -29,12 +29,13 @@ function MyDonationsPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem("Re-Nest.token");
-      const res = await fetch(`${API_URL}/products/userProducts`, {
+      const res = await fetch(`${API_URL}/dashboard/dashboard`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (res.ok && (data.responseCode === 200 || data.responseCode === 201)) {
-        setProducts(data.responseData || []);
+        const payload = data.responseData || data;
+        setProducts(payload.products || []);
       } else {
         toast.error(data.responseMessage || "Failed to load donations");
       }
