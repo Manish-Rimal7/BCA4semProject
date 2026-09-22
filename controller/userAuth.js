@@ -193,6 +193,7 @@ export const getMe = async (req, res) => {
     };
     return responseManager.success(res, 200, "User profile retrieved", {
       user: userPayload,
+      ...userPayload,
     });
   } catch (error) {
     console.error(error);

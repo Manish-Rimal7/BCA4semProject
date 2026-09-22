@@ -4,5 +4,5 @@
  */
 
 export const API_BASE_URL =
-    import.meta.env["VITE_API_URL"] || "http://100.67.216.41:4050/api";
+    import.meta.env["VITE_API_URL"] || "http://localhost:8091/api";
 export default API_BASE_URL;
