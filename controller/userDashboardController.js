@@ -36,10 +36,22 @@ export const Dashboard = async (req, res) => {
       .populate("product", "productName UUID")
       .lean();
 
+    const productsWithRatings = products.map((product) => {
+      const prodRatings = receivedRatings.filter(
+        (r) =>
+          r.product &&
+          (r.product._id || r.product).toString() === product._id.toString()
+      );
+      return {
+        ...product,
+        ratings: prodRatings,
+      };
+    });
+
     return responseManager.success(res, 200, "Dashboard loaded successfully", {
       user,
-      products,
-      ratings,
+      products: productsWithRatings,
+      ratings: receivedRatings,
       receivedRatings,
       activities,
     });

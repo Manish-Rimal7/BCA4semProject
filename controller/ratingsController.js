@@ -151,9 +151,10 @@ export const addRating = async (req, res) => {
     }
 
     // Calculate average rating strictly from verified ratings of other users (exclude product owner)
-    const validRatings = product.ratings.filter(
-      (r) => r.user && r.user.toString() !== product.addedBy.toString()
-    );
+    const validRatings = await RatingModel.find({
+      product: product._id,
+      user: { $ne: product.addedBy },
+    });
     if (validRatings.length > 0) {
       const sum = validRatings.reduce((acc, curr) => acc + (curr.productRating || curr.rating || 0), 0);
       product.averageRating = sum / validRatings.length;

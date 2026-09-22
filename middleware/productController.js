@@ -292,6 +292,7 @@ export const sanitizeProductForUser = (prod, user) => {
     interestedUsers: sanitizedInterestedUsers,
     givenRecipients: sanitizedGivenRecipients,
     givenTo: isPrivileged ? prod.givenTo : null,
+    ratings: prod.ratings || copy.ratings || [],
   };
 };
 
@@ -387,13 +388,25 @@ export const getAllProducts = async (req, res) => {
     // Restrict interested users visibility & emails confidential
     const sanitizedProducts = products.map((prod) => sanitizeProductForUser(prod, req.user));
 
+    const productIds = sanitizedProducts.map((p) => p._id);
+    const ratings = await Rating.find({ product: { $in: productIds } })
+      .populate("user", "username")
+      .lean();
+
+    const productsWithRatings = sanitizedProducts.map((prod) => ({
+      ...prod,
+      ratings: ratings.filter(
+        (r) => r.product && (r.product._id || r.product).toString() === prod._id.toString()
+      ),
+    }));
+
     if (isPaginated) {
       return responseManager.success(
         res,
         200,
         "Products fetched successfully",
         {
-          products: sanitizedProducts,
+          products: productsWithRatings,
           total,
           page,
           totalPages,
@@ -406,7 +419,7 @@ export const getAllProducts = async (req, res) => {
       res,
       200,
       "All products fetched successfully",
-      sanitizedProducts
+      productsWithRatings
     );
   } catch (error) {
     console.log(error);
@@ -655,13 +668,14 @@ export const getProduct = async (req, res) => {
       return responseManager.error(res, 404, "Product does not exist");
     }
 
-    const sanitizedProduct = sanitizeProductForUser(product, req.user);
-
     const ratings = await Rating.find({
       product: product._id,
     })
       .populate("user", "username")
       .lean();
+
+    const sanitizedProduct = sanitizeProductForUser(product, req.user);
+    sanitizedProduct.ratings = ratings;
 
     return responseManager.success(res, 200, "Product fetched successfully", {
       product: sanitizedProduct,
