@@ -245,8 +245,8 @@ export const sanitizeProductForUser = (prod, user) => {
         ? {
             _id: prod.addedBy._id,
             username: prod.addedBy.username,
-            ...(prod.addedBy.mail || prod.addedBy.email
-              ? { mail: prod.addedBy.mail || prod.addedBy.email }
+            ...(prod.addedBy.mail
+              ? { mail: prod.addedBy.mail }
               : {}),
           }
         : prod.addedBy)
@@ -267,8 +267,8 @@ export const sanitizeProductForUser = (prod, user) => {
               ? {
                   _id: entry.user._id,
                   username: entry.user.username,
-                  ...((entry.user.mail || entry.user.email)
-                    ? { mail: entry.user.mail || entry.user.email }
+                  ...(entry.user.mail
+                    ? { mail: entry.user.mail }
                     : {}),
                 }
               : entry.user)

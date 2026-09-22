@@ -482,7 +482,7 @@ function ItemDetail() {
                   {interestedList.map((entry: any, index: number) => {
                     const uObj = entry?.user || entry;
                     const reqName = uObj?.username || "Neighbour";
-                    const reqMail = isPrivileged && uObj ? (uObj.mail || uObj.email) : null;
+                    const reqMail = isPrivileged && uObj ? uObj.mail : null;
                     const reqId = uObj?._id || uObj?.id || uObj;
                     const isCurrentRequester = user && String(user.id) === String(reqId);
 

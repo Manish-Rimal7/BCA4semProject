@@ -225,7 +225,7 @@ function UserProfilePage() {
                 </div>
                 {user?.role === "admin" && (
                   <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                    <Mail className="size-3.5" /> {currentUser?.mail || currentUser?.email}
+                    <Mail className="size-3.5" /> {currentUser?.mail}
                   </p>
                 )}
               </div>
@@ -361,7 +361,7 @@ function UserProfilePage() {
                   <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">
                     Email Address (Admin View)
                   </dt>
-                  <dd className="font-semibold text-foreground mt-0.5">{currentUser?.mail || currentUser?.email}</dd>
+                  <dd className="font-semibold text-foreground mt-0.5">{currentUser?.mail}</dd>
                 </div>
               )}
               {currentUser?.address && (
