@@ -203,7 +203,9 @@ function UserDashboardPage() {
                 </span>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">{user?.mail}</p>
+            {user?.role === "admin" && (
+              <p className="text-sm text-muted-foreground">{user?.mail}</p>
+            )}
           </div>
         </div>
         <Button asChild className="rounded-full">
@@ -260,7 +262,7 @@ function UserDashboardPage() {
                       <div className="flex items-center gap-2 text-xs font-semibold min-w-0">
                         <CheckCircle className="size-4 text-emerald-600 shrink-0" />
                         <span className="truncate">
-                          Gifted to {p.givenTo.username || p.givenTo.mail || "Neighbour"}
+                          Gifted to {p.givenTo.username || "Neighbour"}
                         </span>
                       </div>
                       <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-700 text-white px-2 py-0.5 rounded-full">
@@ -285,7 +287,7 @@ function UserDashboardPage() {
                             return (
                               <span
                                 key={uObj._id || uObj.id || idx}
-                                title={`${uObj.username} (${uObj.mail})`}
+                                title={uObj.username}
                                 className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground ring-2 ring-background uppercase"
                               >
                                 {uname.slice(0, 1)}
@@ -306,7 +308,6 @@ function UserDashboardPage() {
                         {p.interestedUsers.map((u: any, idx: number) => {
                           const uObj = u?.user || u;
                           const uname = uObj.username || "Anonymous";
-                          const umail = uObj.mail || "";
                           const purpose = u?.purpose || "";
                           const recipientId = uObj._id || uObj.id;
                           const isGivenToThisUser =
@@ -324,7 +325,6 @@ function UserDashboardPage() {
                                   </span>
                                   <div className="min-w-0">
                                     <p className="font-semibold text-foreground truncate leading-tight">{uname}</p>
-                                    {umail && <p className="text-[10px] text-muted-foreground truncate">{umail}</p>}
                                   </div>
                                 </div>
 

@@ -184,13 +184,13 @@ function MyRequestsPage() {
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {requestedProducts.map((p: any) => {
                 const isGiftedToMe =
-                  p.givenTo && (p.givenTo._id === user?.id || p.givenTo === user?.id || p.givenTo.mail === user?.mail);
+                  p.givenTo && (p.givenTo._id === user?.id || p.givenTo === user?.id);
                 const isGiftedToOther = p.givenTo && !isGiftedToMe;
 
                 // Find user's own stated purpose
                 const myInterest = p.interestedUsers?.find((u: any) => {
                   const uObj = u?.user || u;
-                  return (uObj._id || uObj.id || uObj) === user?.id || uObj.mail === user?.mail;
+                  return (uObj._id || uObj.id || uObj) === user?.id;
                 });
                 const myPurpose = myInterest?.purpose || "";
 
@@ -286,11 +286,6 @@ function MyRequestsPage() {
                       <p className="text-muted-foreground">
                         Given by: <span className="font-medium text-foreground">{donor.username || "Community Member"}</span>
                       </p>
-                      {donor.mail && (
-                        <p className="text-muted-foreground">
-                          Contact: <span className="font-medium text-foreground">{donor.mail}</span>
-                        </p>
-                      )}
 
                       <Button
                         onClick={() => setSelectedProductForReview(p)}

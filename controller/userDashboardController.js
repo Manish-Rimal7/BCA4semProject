@@ -12,12 +12,12 @@ export const Dashboard = async (req, res) => {
       User.findById(userId).select("-password").lean(),
       Product.find({ addedBy: userId })
         .populate("interestedUsers.user", "username mail")
-        .populate("givenTo", "username mail")
+        .populate("givenTo", "username")
         .sort({ createdAt: -1 })
         .lean(),
-      Rating.find({ user: userId }).populate("product").lean(),
+      Rating.find({ user: userId }).populate("product", "productName UUID").lean(),
       Activity.find({ user: userId })
-        .populate("product")
+        .populate("product", "productName UUID")
         .sort({ createdAt: -1 })
         .limit(10)
         .lean(),

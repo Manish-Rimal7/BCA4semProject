@@ -18,6 +18,16 @@ const activitySchema = new mongoose.Schema({
     default: null,
   },
 
+  productId: {
+    type: String,
+    default: null,
+  },
+
+  productName: {
+    type: String,
+    default: null,
+  },
+
   details: {
     type: String,
     default: "",

@@ -3,9 +3,9 @@ import { responseManager } from "../middleware/responseManager.js";
 import { sendFeedbackEmail } from "../services/emailService.js";
 
 export const submitFeedback = async (req, res) => {
-  const { name, email, type, subject, message } = req.body;
+  const { name, type, subject, message } = req.body;
 
-  if (!name || !email || !subject || !message) {
+  if (!name || !subject || !message) {
     return responseManager.error(res, 400, "Name, email, subject, and message are required");
   }
 
@@ -15,7 +15,6 @@ export const submitFeedback = async (req, res) => {
     const newFeedback = new Feedback({
       user: req.user ? req.user._id : null,
       name,
-      email,
       type: feedbackType,
       subject,
       message,
@@ -26,7 +25,6 @@ export const submitFeedback = async (req, res) => {
     // Send email notification to configured receiver
     await sendFeedbackEmail({
       name,
-      email,
       type: feedbackType,
       subject,
       message,
@@ -47,7 +45,7 @@ export const submitFeedback = async (req, res) => {
 export const getAllFeedbacks = async (req, res) => {
   try {
     const feedbacks = await Feedback.find()
-      .populate("user", "username mail")
+      .populate("user", "username")
       .sort({ createdAt: -1 });
 
     return responseManager.success(

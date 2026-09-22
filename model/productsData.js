@@ -122,3 +122,5 @@ productSchema.index({ addedBy: 1 });
 productSchema.index({ "interestedUsers.user": 1 });
 
 export default mongoose.model("products", productSchema);
+
+

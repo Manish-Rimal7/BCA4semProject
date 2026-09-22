@@ -205,12 +205,94 @@ export const addProduct = async (req, res) => {
       isNewCategory
         ? "Product submitted with new category suggestion — pending admin approval!"
         : "Product added to the list",
-      newProduct
+      sanitizeProductForUser(newProduct.toObject ? newProduct.toObject() : newProduct, req.user)
     );
   } catch (error) {
     console.log(error);
     return responseManager.error(res, 500, `Error ${error}`);
   }
+};
+
+export const sanitizeProductForUser = (prod, user) => {
+  if (!prod) return prod;
+  const currentUserId = user?._id || user?.id;
+  const isAdmin = Boolean(user && user.role === "admin");
+  const isDonor = Boolean(
+    currentUserId &&
+    prod.addedBy &&
+    (prod.addedBy._id || prod.addedBy).toString() === currentUserId.toString()
+  );
+  const userInterested = Boolean(
+    currentUserId &&
+    prod.interestedUsers &&
+    prod.interestedUsers.some(
+      (u) => (u.user?._id || u.user)?.toString() === currentUserId.toString()
+    )
+  );
+  const isRecipient = Boolean(
+    currentUserId &&
+    prod.givenTo &&
+    (prod.givenTo._id || prod.givenTo).toString() === currentUserId.toString()
+  );
+  const count = prod.interestedUsers?.length || 0;
+
+  // User details (addedBy):
+  // ONLY the admin and the donor who is donating the product can view it.
+  // Beside that, no one is allowed to view user details.
+  const isPrivileged = isDonor || isAdmin;
+  const sanitizedAddedBy = isPrivileged
+    ? (prod.addedBy && typeof prod.addedBy === "object"
+        ? {
+            _id: prod.addedBy._id,
+            username: prod.addedBy.username,
+            ...(prod.addedBy.mail || prod.addedBy.email
+              ? { mail: prod.addedBy.mail || prod.addedBy.email }
+              : {}),
+          }
+        : prod.addedBy)
+    : null;
+
+  // Interested section (interestedUsers):
+  // ONLY the admin and the donor who is donating the product can view it.
+  // Beside that, no one is allowed to view the interested section and the user details.
+  // Normal users ONLY see the count (interestedCount) and an empty list [].
+  const sanitizedInterestedUsers = isPrivileged
+    ? (prod.interestedUsers || []).map((entry) => ({
+        _id: entry._id,
+        message: entry.message,
+        purpose: entry.purpose,
+        interestedAt: entry.interestedAt,
+        user: entry.user
+          ? (typeof entry.user === "object"
+              ? {
+                  _id: entry.user._id,
+                  username: entry.user.username,
+                  ...((entry.user.mail || entry.user.email)
+                    ? { mail: entry.user.mail || entry.user.email }
+                    : {}),
+                }
+              : entry.user)
+          : entry.user,
+      }))
+    : [];
+
+  const sanitizedGivenRecipients = isPrivileged
+    ? (prod.givenRecipients || [])
+    : [];
+
+  const copy = { ...prod };
+  delete copy.mail;
+  delete copy.email;
+
+  return {
+    ...copy,
+    addedBy: sanitizedAddedBy,
+    interestedCount: count,
+    isInterested: userInterested,
+    interestedUsers: sanitizedInterestedUsers,
+    givenRecipients: sanitizedGivenRecipients,
+    givenTo: isPrivileged ? prod.givenTo : null,
+  };
 };
 
 export const getAllProducts = async (req, res) => {
@@ -237,18 +319,94 @@ export const getAllProducts = async (req, res) => {
       };
     }
 
-    const products = await Product.find(filter)
+    // Direct database filter by category
+    if (req.query.category && req.query.category !== "all") {
+      const catTrimmed = req.query.category.trim();
+      filter.productCategory = new RegExp(`^${catTrimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+    }
+
+    // Direct database search by term
+    if (req.query.search && req.query.search.trim()) {
+      const term = req.query.search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const searchRegex = new RegExp(term, "i");
+      const searchCondition = {
+        $or: [
+          { productName: searchRegex },
+          { description: searchRegex },
+          { location: searchRegex },
+          { productCategory: searchRegex },
+        ],
+      };
+      if (filter.$or) {
+        filter = {
+          $and: [{ $or: filter.$or }, searchCondition],
+          isApproved: filter.isApproved,
+          ...(filter.addedBy ? { addedBy: filter.addedBy } : {}),
+          ...(filter.productCategory ? { productCategory: filter.productCategory } : {}),
+        };
+      } else {
+        filter.$or = searchCondition.$or;
+      }
+    }
+
+    // Exclude specific product (e.g. for related items)
+    if (req.query.exclude) {
+      const excludeVal = req.query.exclude.trim();
+      const isObjectId = excludeVal.match(/^[0-9a-fA-F]{24}$/);
+      if (isObjectId) {
+        filter._id = { $ne: excludeVal };
+      }
+      filter.UUID = { $ne: excludeVal };
+    }
+
+    const isPaginated = req.query.paginated === "true";
+    const hasLimitOrPage = Boolean(req.query.limit || req.query.page);
+
+    let query = Product.find(filter)
       .populate("addedBy", "username mail")
       .populate("interestedUsers.user", "username mail")
-      .populate("givenTo", "username mail")
-      .sort({ createdAt: -1 })
-      .lean();
+      .populate("givenTo", "username")
+      .sort({ createdAt: -1 });
+
+    let page = 1;
+    let limit = 8;
+    let total = 0;
+    let totalPages = 1;
+
+    if (isPaginated || hasLimitOrPage) {
+      page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 8));
+      total = await Product.countDocuments(filter);
+      totalPages = Math.ceil(total / limit) || 1;
+      const skip = (page - 1) * limit;
+      query = query.skip(skip).limit(limit);
+    }
+
+    const products = await query.lean();
+
+    // Restrict interested users visibility & emails confidential
+    const sanitizedProducts = products.map((prod) => sanitizeProductForUser(prod, req.user));
+
+    if (isPaginated) {
+      return responseManager.success(
+        res,
+        200,
+        "Products fetched successfully",
+        {
+          products: sanitizedProducts,
+          total,
+          page,
+          totalPages,
+          hasMore: page < totalPages,
+        }
+      );
+    }
 
     return responseManager.success(
       res,
       200,
       "All products fetched successfully",
-      products
+      sanitizedProducts
     );
   } catch (error) {
     console.log(error);
@@ -305,13 +463,16 @@ export const toggleInterest = async (req, res) => {
     const updatedProduct = await Product.findOne(filter)
       .populate("addedBy", "username mail")
       .populate("interestedUsers.user", "username mail")
-      .populate("givenTo", "username mail");
+      .populate("givenTo", "username")
+      .lean();
+
+    const sanitizedProduct = sanitizeProductForUser(updatedProduct, req.user);
 
     return responseManager.success(
       res,
       200,
       isInterested ? "Interest expressed successfully" : "Interest removed",
-      updatedProduct
+      sanitizedProduct
     );
   } catch (error) {
     console.error(error);
@@ -367,15 +528,18 @@ export const giveProduct = async (req, res) => {
     await makeActivity(
       userId,
       "PRODUCT_GIVEN",
-      product._id,
+      product,
       `Given ${toGive} unit(s) of "${product.productName}" to a neighbour (${remaining} remaining)`
     );
 
     const updatedProduct = await Product.findOne(filter)
       .populate("addedBy", "username mail")
       .populate("interestedUsers.user", "username mail")
-      .populate("givenTo", "username mail")
-      .populate("givenRecipients.user", "username mail");
+      .populate("givenTo", "username")
+      .populate("givenRecipients.user", "username")
+      .lean();
+
+    const sanitizedProduct = sanitizeProductForUser(updatedProduct, req.user);
 
     return responseManager.success(
       res,
@@ -383,7 +547,7 @@ export const giveProduct = async (req, res) => {
       remaining > 0
         ? `Successfully assigned ${toGive} unit(s)! ${remaining} unit(s) remaining for donation.`
         : "Item fully given away!",
-      updatedProduct
+      sanitizedProduct
     );
   } catch (error) {
     console.error(error);
@@ -422,13 +586,18 @@ export const approveProduct = async (req, res) => {
     await makeActivity(
       req.user._id,
       "PRODUCT_APPROVED",
-      product._id,
+      product,
       `Product "${product.productName}" approved by admin`
     );
 
-    return responseManager.success(res, 200, "Product approved successfully", product);
+    return responseManager.success(
+      res,
+      200,
+      "Product approved successfully",
+      sanitizeProductForUser(product.toObject ? product.toObject() : product, req.user)
+    );
   } catch (error) {
-    console.error(error);
+    console.log(error);
     return responseManager.error(res, 500, "Server error");
   }
 };
@@ -442,15 +611,6 @@ export const rejectProduct = async (req, res) => {
     if (!product) {
       return responseManager.error(res, 404, "Product not found");
     }
-
-    if (product.status === "given" || product.givenTo) {
-      return responseManager.error(
-        res,
-        400,
-        "Cannot revoke approval for an item that has already been given away"
-      );
-    }
-
     product.isApproved = false;
     product.approvalStatus = "rejected";
     await product.save();
@@ -458,13 +618,18 @@ export const rejectProduct = async (req, res) => {
     await makeActivity(
       req.user._id,
       "PRODUCT_REJECTED",
-      product._id,
-      `Product "${product.productName}" rejected by admin`
+      product,
+      `Product "${product.productName}" approval rejected/revoked by admin`
     );
 
-    return responseManager.success(res, 200, "Product rejected successfully", product);
+    return responseManager.success(
+      res,
+      200,
+      "Product rejected successfully",
+      sanitizeProductForUser(product.toObject ? product.toObject() : product, req.user)
+    );
   } catch (error) {
-    console.error(error);
+    console.log(error);
     return responseManager.error(res, 500, "Server error");
   }
 };
@@ -482,13 +647,15 @@ export const getProduct = async (req, res) => {
     const product = await Product.findOne(filter)
       .populate("addedBy", "username mail")
       .populate("interestedUsers.user", "username mail")
-      .populate("givenTo", "username mail")
-      .populate("givenRecipients.user", "username mail")
+      .populate("givenTo", "username")
+      .populate("givenRecipients.user", "username")
       .lean();
 
     if (!product) {
       return responseManager.error(res, 404, "Product does not exist");
     }
+
+    const sanitizedProduct = sanitizeProductForUser(product, req.user);
 
     const ratings = await Rating.find({
       product: product._id,
@@ -497,7 +664,7 @@ export const getProduct = async (req, res) => {
       .lean();
 
     return responseManager.success(res, 200, "Product fetched successfully", {
-      product,
+      product: sanitizedProduct,
       ratings,
     });
   } catch (error) {
@@ -540,8 +707,8 @@ export const deleteProduct = async (req, res) => {
 
     await makeActivity(
       req.user._id,
-      "product deleted",
-      productId,
+      "PRODUCT_DELETED",
+      { _id: productId, productName },
       `Product "${productName}" deleted from the list`
     );
 
@@ -560,24 +727,27 @@ export const getMyRequests = async (req, res) => {
       Product.find({
         "interestedUsers.user": userId,
       })
-        .populate("addedBy", "username mail")
-        .populate("interestedUsers.user", "username mail")
-        .populate("givenTo", "username mail")
+        .populate("addedBy", "username")
+        .populate("interestedUsers.user", "username")
+        .populate("givenTo", "username")
         .sort({ createdAt: -1 })
         .lean(),
       Product.find({
         givenTo: userId,
       })
-        .populate("addedBy", "username mail")
-        .populate("interestedUsers.user", "username mail")
-        .populate("givenTo", "username mail")
+        .populate("addedBy", "username")
+        .populate("interestedUsers.user", "username")
+        .populate("givenTo", "username")
         .sort({ createdAt: -1 })
         .lean(),
     ]);
 
+    const sanitizedRequested = requestedProducts.map((p) => sanitizeProductForUser(p, req.user));
+    const sanitizedGifted = giftedProducts.map((p) => sanitizeProductForUser(p, req.user));
+
     return responseManager.success(res, 200, "User requests and gifts fetched successfully", {
-      requestedProducts,
-      giftedProducts,
+      requestedProducts: sanitizedRequested,
+      giftedProducts: sanitizedGifted,
     });
   } catch (error) {
     console.error("Error fetching my requests:", error);

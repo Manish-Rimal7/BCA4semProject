@@ -31,7 +31,7 @@ export const addRating = async (req, res) => {
 
       await makeActivity(
         req.user._id,
-        "rating added",
+        "RATING_ADDED",
         null,
         `You submitted a community rating of ${Rating} stars`
       );
@@ -95,6 +95,30 @@ export const addRating = async (req, res) => {
       return responseManager.error(res, 400, "Donor rating must be an integer between 1 and 5");
     }
 
+    if (!product.ratings) {
+      product.ratings = [];
+    }
+
+    const existingProductRatingIndex = product.ratings.findIndex(
+      (r) => r.user && r.user.toString() === req.user._id.toString()
+    );
+
+    if (existingProductRatingIndex !== -1) {
+      product.ratings[existingProductRatingIndex].productRating = pRating;
+      product.ratings[existingProductRatingIndex].donorRating = dRating;
+      product.ratings[existingProductRatingIndex].rating = pRating;
+      product.ratings[existingProductRatingIndex].comment = comment || "";
+    } else {
+      product.ratings.push({
+        user: req.user._id,
+        productRating: pRating,
+        donorRating: dRating,
+        rating: pRating,
+        comment: comment || "",
+        createdAt: new Date(),
+      });
+    }
+
     const existingRating = await RatingModel.findOne({
       product: product._id,
       user: req.user._id,
@@ -111,7 +135,7 @@ export const addRating = async (req, res) => {
       existingRating.experienceType = "receiver";
       await existingRating.save();
 
-      action = "rating updated";
+      action = "RATING_UPDATED";
     } else {
       await RatingModel.create({
         product: product._id,
@@ -123,28 +147,26 @@ export const addRating = async (req, res) => {
         comment: comment || "",
         experienceType: "receiver",
       });
-      action = "rating added";
+      action = "RATING_ADDED";
     }
 
-    // Calculate average rating strictly from other users (exclude product owner)
-    const everyRatings = await RatingModel.find({
-      product: product._id,
-      user: { $ne: product.addedBy },
-    });
-
-    let totalRating = 0;
-    for (let i = 0; i < everyRatings.length; i++) {
-      totalRating = totalRating + (everyRatings[i].productRating || everyRatings[i].rating);
+    // Calculate average rating strictly from verified ratings of other users (exclude product owner)
+    const validRatings = product.ratings.filter(
+      (r) => r.user && r.user.toString() !== product.addedBy.toString()
+    );
+    if (validRatings.length > 0) {
+      const sum = validRatings.reduce((acc, curr) => acc + (curr.productRating || curr.rating || 0), 0);
+      product.averageRating = sum / validRatings.length;
+    } else {
+      product.averageRating = 0;
     }
-
-    product.averageRating = everyRatings.length > 0 ? (totalRating / everyRatings.length) : 0;
 
     await product.save();
 
     await makeActivity(
       req.user._id,
       action,
-      product._id,
+      product,
       `You rated "${product.productName}" (${pRating}★) and the donor (${dRating}★)`
     );
 
@@ -172,11 +194,11 @@ export const addRating = async (req, res) => {
 export const getAllRatings = async (req, res) => {
   try {
     const ratings = await RatingModel.find()
-      .populate("user", "username mail")
+      .populate("user", "username")
       .populate({
         path: "product",
         select: "productName UUID condition location addedBy",
-        populate: { path: "addedBy", select: "username mail" },
+        populate: { path: "addedBy", select: "username" },
       })
       .sort({ createdAt: -1 });
 

@@ -223,9 +223,11 @@ function UserProfilePage() {
                     {currentUser?.role || "Member"}
                   </span>
                 </div>
-                <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                  <Mail className="size-3.5" /> {currentUser?.mail || currentUser?.email}
-                </p>
+                {user?.role === "admin" && (
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                    <Mail className="size-3.5" /> {currentUser?.mail || currentUser?.email}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -354,12 +356,14 @@ function UserProfilePage() {
                 </dt>
                 <dd className="font-semibold text-foreground mt-0.5">{currentUser?.username}</dd>
               </div>
-              <div className="pt-2 border-t border-border/50">
-                <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">
-                  Email Address
-                </dt>
-                <dd className="font-semibold text-foreground mt-0.5">{currentUser?.mail || currentUser?.email}</dd>
-              </div>
+              {user?.role === "admin" && (
+                <div className="pt-2 border-t border-border/50">
+                  <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">
+                    Email Address (Admin View)
+                  </dt>
+                  <dd className="font-semibold text-foreground mt-0.5">{currentUser?.mail || currentUser?.email}</dd>
+                </div>
+              )}
               {currentUser?.address && (
                 <div className="pt-2 border-t border-border/50">
                   <dt className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">

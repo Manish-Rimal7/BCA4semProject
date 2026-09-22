@@ -30,32 +30,87 @@ function IndexPage() {
   const [items, setItems] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [overallTotal, setOverallTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
-  const fetchProducts = () => {
+  // Debounce search query to reduce network calls while typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const fetchProducts = (targetPage = 1, append = false) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+
     const token = localStorage.getItem("Re-Nest.token");
     const headers: Record<string, string> = {};
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    fetch(`${API_BASE_URL}/products/getProducts`, { headers })
+    const params = new URLSearchParams();
+    params.set("paginated", "true");
+    params.set("page", String(targetPage));
+    params.set("limit", "8");
+
+    if (selectedCategory && selectedCategory !== "all") {
+      params.set("category", selectedCategory);
+    }
+    if (debouncedSearch.trim()) {
+      params.set("search", debouncedSearch.trim());
+    }
+
+    fetch(`${API_BASE_URL}/products/getProducts?${params.toString()}`, { headers })
       .then((res) => res.json())
       .then((data) => {
-        if (data.responseCode === 200 && Array.isArray(data.responseData)) {
-          setItems(data.responseData);
-        } else if (Array.isArray(data)) {
-          setItems(data);
-        } else {
-          setItems([]);
+        const payload = data.responseData || data;
+        let fetchedList: any[] = [];
+        let total = 0;
+        let more = false;
+
+        if (payload && Array.isArray(payload.products)) {
+          fetchedList = payload.products;
+          total = payload.total || 0;
+          more = Boolean(payload.hasMore);
+        } else if (Array.isArray(payload)) {
+          fetchedList = payload;
+          total = payload.length;
+          more = false;
         }
+
+        if (append) {
+          setItems((prev) => [...prev, ...fetchedList]);
+        } else {
+          setItems(fetchedList);
+        }
+
+        setTotalCount(total);
+        if (selectedCategory === "all" && !debouncedSearch.trim() && targetPage === 1) {
+          setOverallTotal(total);
+        }
+        setHasMore(more);
+        setPage(targetPage);
       })
       .catch((err) => {
         console.error("Failed to fetch products:", err);
-        setItems([]);
+        if (!append) setItems([]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setLoadingMore(false);
+      });
   };
 
   const fetchCategories = () => {
@@ -73,75 +128,19 @@ function IndexPage() {
   };
 
   useEffect(() => {
-    fetchProducts();
-  }, [user]);
+    fetchProducts(1, false);
+  }, [user, debouncedSearch, selectedCategory]);
 
   useEffect(() => {
     fetchCategories();
   }, []);
 
-  const INITIAL_VISIBLE_COUNT = 8; // 2 rows in 4-column grid
-  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
-
-  useEffect(() => {
-    setVisibleCount(INITIAL_VISIBLE_COUNT);
-  }, [searchQuery, selectedCategory]);
-
-  const filteredItems = items.filter((item: any) => {
-    // 1. Exclude items added by the currently logged in user
-    if (user) {
-      const addedById = item.addedBy?._id || item.addedBy?.id || item.addedBy;
-      const currentUserId = user.id || (user as any)._id;
-      const isMyItem =
-        (addedById && currentUserId && addedById.toString() === currentUserId.toString()) ||
-        (item.addedBy?.mail && user.mail && item.addedBy.mail.toLowerCase() === user.mail.toLowerCase());
-      if (isMyItem) return false;
-    }
-
-    // 2. Handle given away items:
-    // If an item is given away, hide from general feed,
-    // but keep visible if the logged in user is one of the interested users
-    const isGivenAway = item.status === "given" || !!item.givenTo;
-    if (isGivenAway) {
-      if (!user) return false;
-      const currentUserId = user.id || (user as any)._id;
-      const isInterested = (item.interestedUsers || []).some((u: any) => {
-        const uId = u?.user?._id || u?.user?.id || u?.user || u;
-        const uMail = u?.user?.mail;
-        return (
-          (uId && currentUserId && uId.toString() === currentUserId.toString()) ||
-          (uMail && user.mail && uMail.toLowerCase() === user.mail.toLowerCase())
-        );
-      });
-      if (!isInterested) return false;
-    }
-
-    const name = item.productName || item.title || "";
-    const cat = item.productCategory || item.category || "";
-    const condition = item.condition || "";
-    const desc = item.description || "";
-
-    const matchesSearch =
-      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cat.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      condition.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      desc.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesCategory =
-      selectedCategory === "all" ||
-      cat.toLowerCase() === selectedCategory.toLowerCase();
-
-    return matchesSearch && matchesCategory;
-  });
-
-  const visibleItems = filteredItems.slice(0, visibleCount);
-  const hasMoreItems = visibleCount < filteredItems.length;
-
   const handleLoadMore = () => {
-    setVisibleCount((prev) => prev + 8); // Add 2 more rows (+8 items)
+    if (!loadingMore && hasMore) {
+      fetchProducts(page + 1, true);
+    }
   };
 
-  const availableCount = items.filter((i) => i.status !== "given").length;
   const giftedCount = items.filter((i) => i.status === "given" || !!i.givenTo).length;
 
   return (
@@ -188,7 +187,9 @@ function IndexPage() {
           {/* STATS OVERLAY */}
           <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto pt-6 border-t border-border/60">
             <div className="p-3 rounded-2xl bg-card/60 backdrop-blur border border-border/80">
-              <p className="text-2xl md:text-3xl font-extrabold text-emerald-700 dark:text-emerald-400">{items.length}</p>
+              <p className="text-2xl md:text-3xl font-extrabold text-emerald-700 dark:text-emerald-400">
+                {overallTotal || totalCount || items.length}
+              </p>
               <p className="text-xs text-muted-foreground font-medium mt-0.5">Total Shared</p>
             </div>
             <div className="p-3 rounded-2xl bg-card/60 backdrop-blur border border-border/80">
@@ -295,7 +296,7 @@ function IndexPage() {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="px-3.5 py-2.5 text-sm border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-emerald-600/40 capitalize font-medium"
             >
-              <option value="all">All Categories ({items.length})</option>
+              <option value="all">All Categories</option>
               {categories.map((c: any) => (
                 <option key={c._id || c.name} value={c.name.toLowerCase()}>
                   {c.name}
@@ -312,31 +313,32 @@ function IndexPage() {
               <div key={n} className="h-72 bg-muted animate-pulse rounded-2xl" />
             ))}
           </div>
-        ) : filteredItems.length > 0 ? (
+        ) : items.length > 0 ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {visibleItems.map((item: any, idx: number) => (
+              {items.map((item: any, idx: number) => (
                 <ItemCard
                   key={item.UUID || item.id || item._id || idx}
                   item={item}
-                  onInterestToggle={fetchProducts}
+                  onInterestToggle={() => fetchProducts(1, false)}
                 />
               ))}
             </div>
 
             {/* VIEW MORE PAGINATION BUTTON */}
-            {hasMoreItems && (
+            {hasMore && (
               <div className="mt-10 flex flex-col items-center justify-center">
                 <button
                   type="button"
                   onClick={handleLoadMore}
-                  className="inline-flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-8 py-3.5 rounded-full font-semibold text-sm shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
+                  disabled={loadingMore}
+                  className="inline-flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-8 py-3.5 rounded-full font-semibold text-sm shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 disabled:opacity-50 cursor-pointer"
                 >
-                  <span>View More Items</span>
+                  <span>{loadingMore ? "Loading more items…" : "View More Items"}</span>
                   <Plus className="w-4 h-4" />
                 </button>
                 <p className="text-xs text-muted-foreground mt-2.5 font-medium">
-                  Showing {visibleItems.length} of {filteredItems.length} items
+                  Showing {items.length} of {totalCount} items
                 </p>
               </div>
             )}

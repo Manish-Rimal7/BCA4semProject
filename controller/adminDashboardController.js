@@ -25,7 +25,7 @@ export const AdminDashboard = async (req, res) => {
       User.find().select("-password").sort({ createdAt: -1 }).lean(),
       Product.find().sort({ createdAt: -1 }).limit(5).lean(),
       Product.find({ isApproved: false })
-        .populate("addedBy", "username mail")
+        .populate("addedBy", "username")
         .sort({ createdAt: -1 })
         .lean(),
       Activity.find()

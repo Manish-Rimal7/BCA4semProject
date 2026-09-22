@@ -24,14 +24,15 @@ export function ItemCard({ item, onInterestToggle }: { item: any; onInterestTogg
   const quantity = item.quantity && Number(item.quantity) > 1 ? Number(item.quantity) : 1;
 
   const interestedList = item.interestedUsers || [];
-  const count = interestedList.length || item.requestCount || 0;
+  const count = item.interestedCount ?? interestedList.length ?? item.requestCount ?? 0;
 
   const [interestedCount, setInterestedCount] = useState<number>(count);
   const [isInterested, setIsInterested] = useState<boolean>(() => {
+    if (item.isInterested !== undefined) return Boolean(item.isInterested);
     if (!user) return false;
     return interestedList.some((u: any) => {
       const uObj = u?.user || u;
-      return (uObj._id || uObj.id || uObj) === user.id || uObj.mail === user.mail;
+      return (uObj._id || uObj.id || uObj) === user.id;
     });
   });
   const [loading, setLoading] = useState(false);

@@ -7,10 +7,24 @@ export const makeActivity = async (
   details = ""
 ) => {
   try {
+    let pId = null;
+    let pName = null;
+
+    if (product) {
+      if (typeof product === "object" && product._id) {
+        pId = product._id.toString();
+        pName = product.productName || null;
+      } else {
+        pId = product.toString();
+      }
+    }
+
     const newActivity = await Activity.create({
       user,
       activity,
-      product,
+      product: pId,
+      productId: pId,
+      productName: pName,
       details,
     });
 

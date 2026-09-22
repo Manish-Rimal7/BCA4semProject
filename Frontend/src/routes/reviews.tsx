@@ -166,7 +166,7 @@ function ReviewsPage() {
       const prodRes = await fetch(`${API_URL}/products/getProducts`);
       const prodData = await prodRes.json();
       if (prodRes.ok && (prodData.responseCode === 200 || prodData.responseCode === 201)) {
-        const pList = prodData.responseData || [];
+        const pList = prodData.responseData?.products || (Array.isArray(prodData.responseData) ? prodData.responseData : []);
         setProducts(pList);
       }
     } catch (error) {
@@ -549,8 +549,7 @@ function ReviewsPage() {
                         if (!myId) return false;
                         const isGivenToMe =
                           p.givenTo &&
-                          ((p.givenTo._id || p.givenTo.id || p.givenTo) === myId ||
-                            p.givenTo.mail === user?.mail);
+                          String(p.givenTo._id || p.givenTo.id || p.givenTo) === String(myId);
                         const isRecipient =
                           isGivenToMe ||
                           p.givenRecipients?.some((g: any) => {

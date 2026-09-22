@@ -499,7 +499,7 @@ function AdminDashboardPage() {
                   onChange={(e) => setCategoryFilter(e.target.value)}
                   className="rounded-full border border-input bg-background px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-600/40 capitalize"
                 >
-                  <option value="all">All Categories ({allProducts.length})</option>
+                  <option value="all">All Categories </option>
                   {categories.map((c: any) => (
                     <option key={c._id || c.name} value={c.name.toLowerCase()}>
                       {c.name}

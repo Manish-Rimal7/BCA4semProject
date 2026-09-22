@@ -19,7 +19,7 @@ const router = express.Router();
 router.post("/addProduct", credential, existingProducts, addProduct);
 router.get("/getProducts", optionalCredential, getAllProducts);
 router.get("/myRequests", credential, getMyRequests);
-router.get("/getProducts/:UUID", getProduct);
+router.get("/getProducts/:UUID", optionalCredential, getProduct);
 router.post("/deleteProduct/:UUID", credential, deleteProduct);
 router.post("/approveProduct/:UUID", credential, adminChecker, approveProduct);
 router.post("/rejectProduct/:UUID", credential, adminChecker, rejectProduct);

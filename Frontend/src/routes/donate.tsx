@@ -224,7 +224,7 @@ function DonatePage() {
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <span className="block text-sm font-medium">Quantity Available for Donation</span>
-            <span className="text-xs text-muted-foreground">e.g. 1 table, 6 spoons, 12 books</span>
+            <span className="text-xs text-muted-foreground"></span>
           </div>
           <div className="flex items-center gap-3">
             <button

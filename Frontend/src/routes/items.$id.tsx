@@ -73,7 +73,12 @@ function ItemDetail() {
   const fetchProduct = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/products/getProducts/${id}`);
+      const headers: Record<string, string> = {};
+      const token = localStorage.getItem("token");
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const response = await fetch(`${API_URL}/products/getProducts/${id}`, { headers });
       const resData = await response.json();
 
       if (response.ok) {
@@ -86,22 +91,17 @@ function ItemDetail() {
         if (itemObj) {
           setData(itemObj);
 
-          // Fetch related items in same category
+          // Fetch related items in same category on-demand
           if (itemObj.productCategory) {
-            fetch(`${API_URL}/products/getProducts`)
+            const excludeId = itemObj.UUID || itemObj._id || id;
+            fetch(
+              `${API_URL}/products/getProducts?category=${encodeURIComponent(itemObj.productCategory)}&limit=4&exclude=${encodeURIComponent(excludeId)}`
+            )
               .then((res) => res.json())
               .then((allRes) => {
-                const all = allRes.responseData || [];
+                const all = allRes.responseData?.products || allRes.responseData || [];
                 if (Array.isArray(all)) {
-                  setRelatedItems(
-                    all
-                      .filter(
-                        (p: any) =>
-                          p.productCategory === itemObj.productCategory &&
-                          (p.UUID ? p.UUID !== itemObj.UUID : p._id !== itemObj._id)
-                      )
-                      .slice(0, 3)
-                  );
+                  setRelatedItems(all.slice(0, 3));
                 }
               })
               .catch(console.error);
@@ -125,12 +125,15 @@ function ItemDetail() {
   }, [id]);
 
   const interestedList = data?.interestedUsers || [];
-  const isInterested =
-    user &&
-    interestedList.some((u: any) => {
-      const uObj = u?.user || u;
-      return (uObj._id || uObj.id || uObj) === user.id || uObj.mail === user.mail;
-    });
+  const interestedCount = data?.interestedCount ?? interestedList.length;
+  const isInterested = Boolean(
+    data?.isInterested ||
+    (user &&
+      interestedList.some((u: any) => {
+        const uObj = u?.user || u;
+        return (uObj._id || uObj.id || uObj) === user.id;
+      }))
+  );
 
   const handleToggleInterest = async (purpose?: string) => {
     if (!user) {
@@ -370,22 +373,21 @@ function ItemDetail() {
   const availableQuantity = typeof data.quantity === "number" ? data.quantity : 1;
   const initialQuantity = typeof data.initialQuantity === "number" ? data.initialQuantity : Math.max(availableQuantity, 1);
   const donorName = data.addedBy?.username || "Community Member";
-  const donorMail = data.addedBy?.mail || "";
   const avgRating = data.averageRating || 0;
 
   const myUserId = user?.id || (user as any)?._id;
+  const isAdmin = Boolean(user && user.role === "admin");
   const isOwner = Boolean(
     user &&
       data.addedBy &&
-      ((data.addedBy._id || data.addedBy.id || data.addedBy) === myUserId ||
-        data.addedBy.mail === user.mail)
+      String(data.addedBy._id || data.addedBy.id || data.addedBy) === String(myUserId)
   );
+  const isPrivileged = isOwner || isAdmin;
 
   const isReceiver = Boolean(
     user &&
       ((data.givenTo &&
-        ((data.givenTo._id || data.givenTo.id || data.givenTo) === myUserId ||
-          data.givenTo.mail === user.mail)) ||
+        String(data.givenTo._id || data.givenTo.id || data.givenTo) === String(myUserId)) ||
         (data.givenRecipients &&
           data.givenRecipients.some((g: any) => {
             const gId = g.user?._id || g.user?.id || g.user;
@@ -442,85 +444,87 @@ function ItemDetail() {
               </div>
               <div>
                 <dt className="text-xs uppercase tracking-wide text-muted-foreground">Interested</dt>
-                <dd className="mt-1 font-medium">{interestedList.length} neighbours</dd>
+                <dd className="mt-1 font-medium">{interestedCount} neighbours</dd>
               </div>
             </dl>
           </div>
 
-          {/* INTERESTED NEIGHBOURS & MESSAGES SECTION */}
-          <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-bold flex items-center gap-2">
-                  <Heart className="size-5 text-emerald-600 fill-emerald-600" />
-                  Interested Neighbours ({interestedList.length})
-                </h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Neighbours who expressed interest and shared how this item will help them.
-                </p>
+          {/* INTERESTED NEIGHBOURS & MESSAGES SECTION - EXCLUSIVE TO DONOR & ADMIN */}
+          {isPrivileged && (
+            <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-bold flex items-center gap-2">
+                    <Heart className="size-5 text-emerald-600 fill-emerald-600" />
+                    Interested Neighbours ({interestedList.length})
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Neighbours who expressed interest and shared how this item will help them.
+                  </p>
+                </div>
+                {availableQuantity > 0 && (
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                    {availableQuantity} unit{availableQuantity === 1 ? "" : "s"} to give
+                  </span>
+                )}
               </div>
-              {availableQuantity > 0 && (
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-                  {availableQuantity} unit{availableQuantity === 1 ? "" : "s"} to give
-                </span>
-              )}
-            </div>
 
-            {interestedList.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border p-8 text-center bg-secondary/20">
-                <Users className="size-8 mx-auto text-muted-foreground/50 mb-2" />
-                <p className="text-sm font-medium text-muted-foreground">No requests received yet</p>
-                <p className="text-xs text-muted-foreground/80 mt-1">
-                  When neighbours request this item, their profile and message will appear here.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {interestedList.map((entry: any, index: number) => {
-                  const uObj = entry?.user || entry;
-                  const reqName = uObj?.username || "Neighbour";
-                  const reqMail = uObj?.mail;
-                  const reqId = uObj?._id || uObj?.id || uObj;
-                  const isCurrentRequester = user && (user.id === reqId || user.mail === reqMail);
+              {interestedList.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border p-8 text-center bg-secondary/20">
+                  <Users className="size-8 mx-auto text-muted-foreground/50 mb-2" />
+                  <p className="text-sm font-medium text-muted-foreground">No requests received yet</p>
+                  <p className="text-xs text-muted-foreground/80 mt-1">
+                    When neighbours request this item, their profile and message will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {interestedList.map((entry: any, index: number) => {
+                    const uObj = entry?.user || entry;
+                    const reqName = uObj?.username || "Neighbour";
+                    const reqMail = isPrivileged && uObj ? (uObj.mail || uObj.email) : null;
+                    const reqId = uObj?._id || uObj?.id || uObj;
+                    const isCurrentRequester = user && String(user.id) === String(reqId);
 
-                  return (
-                    <div
-                      key={reqId || index}
-                      className={cn(
-                        "rounded-xl border p-4 transition-all bg-card/80",
-                        isCurrentRequester
-                          ? "border-emerald-600/40 bg-emerald-500/5 shadow-xs"
-                          : "border-border/80 hover:border-border"
-                      )}
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                        <div className="flex items-start gap-3">
-                          <span className="flex size-10 items-center justify-center rounded-full bg-emerald-700 text-white font-bold text-sm shrink-0 uppercase shadow-xs">
-                            {reqName.slice(0, 1)}
-                          </span>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-semibold text-sm">{reqName}</p>
-                              {isCurrentRequester && (
-                                <span className="rounded-full bg-emerald-600 text-white px-2 py-0.5 text-[10px] font-bold">
-                                  You
-                                </span>
+                    return (
+                      <div
+                        key={reqId || index}
+                        className={cn(
+                          "rounded-xl border p-4 transition-all bg-card/80",
+                          isCurrentRequester
+                            ? "border-emerald-600/40 bg-emerald-500/5 shadow-xs"
+                            : "border-border/80 hover:border-border"
+                        )}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                          <div className="flex items-start gap-3">
+                            <span className="flex size-10 items-center justify-center rounded-full bg-emerald-700 text-white font-bold text-sm shrink-0 uppercase shadow-xs">
+                              {reqName.slice(0, 1)}
+                            </span>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-sm">{reqName}</p>
+                                {isCurrentRequester && (
+                                  <span className="rounded-full bg-emerald-600 text-white px-2 py-0.5 text-[10px] font-bold">
+                                    You
+                                  </span>
+                                )}
+                              </div>
+                              {reqMail && (
+                                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                                  {reqMail}
+                                </p>
                               )}
+                              <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                                <Clock className="size-3" />
+                                <span>
+                                  Requested {entry.interestedAt ? formatNepalDateTime(entry.interestedAt) : "recently"}
+                                </span>
+                              </p>
                             </div>
-                            {(isOwner || user?.role === "admin") && reqMail && (
-                              <p className="text-xs text-muted-foreground">{reqMail}</p>
-                            )}
-                            <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                              <Clock className="size-3" />
-                              <span>
-                                Requested {entry.interestedAt ? formatNepalDateTime(entry.interestedAt) : "recently"}
-                              </span>
-                            </p>
                           </div>
-                        </div>
 
-                        {/* GIVE BUTTON FOR OWNER */}
-                        {(isOwner || user?.role === "admin") && (
+                          {/* GIVE BUTTON FOR OWNER */}
                           <div className="shrink-0 sm:self-center">
                             {availableQuantity > 0 ? (
                               <Button
@@ -545,29 +549,29 @@ function ItemDetail() {
                               </span>
                             )}
                           </div>
-                        )}
-                      </div>
+                        </div>
 
-                      {/* MESSAGE/PURPOSE BUBBLE */}
-                      <div className="mt-3 rounded-lg bg-secondary/40 border border-border/50 p-3 flex items-start gap-2 text-xs">
-                        <MessageSquareQuote className="size-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <span className="font-semibold text-foreground/80 block text-[11px] uppercase tracking-wider mb-0.5">
-                            Reason / Intended Use:
-                          </span>
-                          <p className="italic text-muted-foreground text-xs leading-relaxed">
-                            {entry.purpose && entry.purpose.trim()
-                              ? `"${entry.purpose.trim()}"`
-                              : "No custom message was attached with this interest request."}
-                          </p>
+                        {/* MESSAGE/PURPOSE BUBBLE */}
+                        <div className="mt-3 rounded-lg bg-secondary/40 border border-border/50 p-3 flex items-start gap-2 text-xs">
+                          <MessageSquareQuote className="size-4 text-emerald-600 shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <span className="font-semibold text-foreground/80 block text-[11px] uppercase tracking-wider mb-0.5">
+                              Reason / Intended Use:
+                            </span>
+                            <p className="italic text-muted-foreground text-xs leading-relaxed">
+                              {entry.purpose && entry.purpose.trim()
+                                ? `"${entry.purpose.trim()}"`
+                                : "No custom message was attached with this interest request."}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* UNITS GIVEN AWAY HISTORY (IF ANY) */}
           {data.givenRecipients && data.givenRecipients.length > 0 && (
@@ -579,7 +583,7 @@ function ItemDetail() {
               <div className="space-y-2.5">
                 {data.givenRecipients.map((g: any, i: number) => {
                   const gUser = g?.user || {};
-                  const gName = gUser?.username || gUser?.mail || "A neighbour";
+                  const gName = gUser?.username || "A neighbour";
                   const gQty = g?.quantity || 1;
                   return (
                     <div
@@ -686,22 +690,26 @@ function ItemDetail() {
                 <MapPin className="size-4" /> {location}
               </span>
               <span className="inline-flex items-center gap-2">
-                <Users className="size-4" /> {interestedList.length} neighbours interested
+                <Users className="size-4" /> {interestedCount} neighbours interested
               </span>
             </div>
 
-            <div className="mt-6 border-t border-border pt-5">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Given by</p>
-              <div className="mt-2 flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-full bg-secondary font-semibold uppercase">
-                  {donorName.slice(0, 1)}
-                </span>
-                <div>
-                  <p className="font-medium">{donorName}</p>
-                  {donorMail && <p className="text-xs text-muted-foreground">{donorMail}</p>}
+            {isPrivileged && data.addedBy && (
+              <div className="mt-6 border-t border-border pt-5">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Donor Details (Privileged)</p>
+                <div className="mt-2 flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-full bg-secondary font-semibold uppercase">
+                    {donorName.slice(0, 1)}
+                  </span>
+                  <div>
+                    <p className="font-medium">{donorName}</p>
+                    {data.addedBy.mail && (
+                      <p className="text-xs text-muted-foreground">{data.addedBy.mail}</p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="mt-6 space-y-3">
               {isOwner ? (
