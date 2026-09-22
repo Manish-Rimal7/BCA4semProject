@@ -679,7 +679,6 @@ export const getProduct = async (req, res) => {
 
     return responseManager.success(res, 200, "Product fetched successfully", {
       product: sanitizedProduct,
-      ratings,
     });
   } catch (error) {
     console.log(error);
