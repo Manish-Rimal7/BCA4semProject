@@ -46,19 +46,11 @@ function MyDonationsPage() {
 
     setLoading(true);
     try {
-      // 1. Fetch from /dashboard/dashboard (the active server route for user's donations)
-      let res = await fetch(`${API_URL}/dashboard/dashboard`, {
+      // Fetch directly from the dedicated donations endpoint
+      const res = await fetch(`${API_URL}/donations/myDonations`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      let data = await res.json().catch(() => null);
-
-      // 2. Fallback to /donations/myDonations if dashboard route is unavailable
-      if (!res.ok || !data || (data.responseCode !== 200 && data.responseCode !== 201)) {
-        res = await fetch(`${API_URL}/donations/myDonations`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        data = await res.json().catch(() => null);
-      }
+      const data = await res.json().catch(() => null);
 
       if (res.ok && data && (data.responseCode === 200 || data.responseCode === 201)) {
         const payload = data.responseData || data;

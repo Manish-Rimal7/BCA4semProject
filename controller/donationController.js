@@ -1,5 +1,6 @@
 import Product from "../model/productsData.js";
 import Rating from "../model/ratings.js";
+import User from "../model/userData.js";
 import { responseManager } from "../middleware/responseManager.js";
 
 // GET /api/donations - All community donation listings
@@ -41,7 +42,6 @@ export const getMyDonations = async (req, res) => {
     const products = await Product.find({ addedBy: userId })
       .populate("interestedUsers.user", "username mail")
       .populate("givenTo", "username")
-      .populate("ratings.user", "username")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -50,11 +50,11 @@ export const getMyDonations = async (req, res) => {
     const productRatings =
       productIds.length > 0
         ? await Rating.find({
-            product: { $in: productIds },
-            user: { $ne: userId },
-          })
-            .populate("user", "username")
-            .lean()
+          product: { $in: productIds },
+          user: { $ne: userId },
+        })
+          .populate("user", "username")
+          .lean()
         : [];
 
     const productsWithRatings = products.map((product) => {
