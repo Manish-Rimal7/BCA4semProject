@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -70,11 +70,13 @@ function ItemDetail() {
   });
   const [isSubmittingGive, setIsSubmittingGive] = useState(false);
 
+  const fetchedIdRef = useRef<string | null>(null);
+
   const fetchProduct = async () => {
     setLoading(true);
     try {
       const headers: Record<string, string> = {};
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token") || localStorage.getItem("Re-Nest.token");
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
@@ -94,17 +96,14 @@ function ItemDetail() {
           // Fetch related items in same category on-demand
           if (itemObj.productCategory) {
             const excludeId = itemObj.UUID || itemObj._id || id;
-            fetch(
+            const relatedRes = await fetch(
               `${API_URL}/products/getProducts?category=${encodeURIComponent(itemObj.productCategory)}&limit=4&exclude=${encodeURIComponent(excludeId)}`
-            )
-              .then((res) => res.json())
-              .then((allRes) => {
-                const all = allRes.responseData?.products || allRes.responseData || [];
-                if (Array.isArray(all)) {
-                  setRelatedItems(all.slice(0, 3));
-                }
-              })
-              .catch(console.error);
+            );
+            const allRes = await relatedRes.json();
+            const all = allRes.responseData?.products || allRes.responseData || [];
+            if (Array.isArray(all)) {
+              setRelatedItems(all.slice(0, 3));
+            }
           }
         } else {
           toast.error("Item unavailable or deleted");
@@ -112,7 +111,7 @@ function ItemDetail() {
       } else {
         toast.error("Item unavailable or deleted");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching product:", error);
       toast.error("Network error while loading item");
     } finally {
@@ -121,6 +120,8 @@ function ItemDetail() {
   };
 
   useEffect(() => {
+    if (fetchedIdRef.current === id) return;
+    fetchedIdRef.current = id;
     fetchProduct();
   }, [id]);
 

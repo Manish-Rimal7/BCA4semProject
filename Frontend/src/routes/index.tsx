@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ItemCard } from "../components/ItemCard";
 import { EmptyState } from "../components/EmptyState";
 import {
@@ -47,6 +47,8 @@ function IndexPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  const lastFetchKeyRef = useRef<string>("");
+
   const fetchProducts = (targetPage = 1, append = false) => {
     if (append) {
       setLoadingMore(true);
@@ -54,7 +56,7 @@ function IndexPage() {
       setLoading(true);
     }
 
-    const token = localStorage.getItem("Re-Nest.token");
+    const token = localStorage.getItem("Re-Nest.token") || localStorage.getItem("token");
     const headers: Record<string, string> = {};
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
@@ -108,8 +110,11 @@ function IndexPage() {
         if (!append) setItems([]);
       })
       .finally(() => {
-        setLoading(false);
-        setLoadingMore(false);
+        if (!append) {
+          setLoading(false);
+        } else {
+          setLoadingMore(false);
+        }
       });
   };
 
@@ -128,8 +133,11 @@ function IndexPage() {
   };
 
   useEffect(() => {
+    const fetchKey = `${user?.id || ""}_${debouncedSearch}_${selectedCategory}`;
+    if (lastFetchKeyRef.current === fetchKey) return;
+    lastFetchKeyRef.current = fetchKey;
     fetchProducts(1, false);
-  }, [user, debouncedSearch, selectedCategory]);
+  }, [user?.id, debouncedSearch, selectedCategory]);
 
   useEffect(() => {
     fetchCategories();
@@ -168,8 +176,8 @@ function IndexPage() {
 
           <div className="flex flex-wrap items-center justify-center gap-4 mb-12">
             <Link
-              to="/donate"
-              className="inline-flex items-center gap-2.5 bg-emerald-700 hover:bg-emerald-800 text-white px-6 py-3.5 rounded-full font-semibold shadow-lg shadow-emerald-700/20 hover:shadow-emerald-700/30 transition-all transform hover:-translate-y-0.5"
+              to={user ? "/donate" : "/register"}
+              className="inline-flex items-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-full font-semibold shadow-lg shadow-emerald-600/20 hover:shadow-emerald-700/30 transition-all duration-200 transform hover:-translate-y-0.5"
             >
               <Plus className="w-5 h-5" />
               <span>Donate an Item</span>
@@ -269,8 +277,8 @@ function IndexPage() {
             </p>
           </div>
           <Link
-            to="/donate"
-            className="inline-flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-full font-medium text-sm transition-colors shadow-sm"
+            to={user ? "/donate" : "/register"}
+            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-full font-medium text-sm transition-all duration-200 shadow-sm"
           >
             <Plus className="w-4 h-4" />
             List a New Item
@@ -362,8 +370,8 @@ function IndexPage() {
             Things move, no money changes hands. Built for neighbours, not shoppers. Join the movement today!
           </p>
           <Link
-            to="/donate"
-            className="inline-flex items-center gap-2 bg-white text-emerald-900 hover:bg-emerald-50 px-8 py-3.5 rounded-full font-bold shadow-lg transition-all"
+            to={user ? "/donate" : "/register"}
+            className="inline-flex items-center gap-2 bg-white text-emerald-900 hover:bg-emerald-50 hover:text-emerald-950 px-8 py-3.5 rounded-full font-bold shadow-lg transition-all duration-200"
           >
             <Plus className="w-5 h-5 text-emerald-700" />
             <span>Donate an Item Now</span>

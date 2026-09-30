@@ -24,7 +24,7 @@ export const Route = createFileRoute("/donate")({
     ],
   }),
   component: () => (
-    <ProtectedRoute>
+    <ProtectedRoute redirectTo="/register">
       <DonatePage />
     </ProtectedRoute>
   ),

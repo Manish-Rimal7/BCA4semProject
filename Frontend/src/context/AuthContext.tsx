@@ -202,39 +202,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isSuccess = response.ok && (data.responseCode === 200 || data.responseCode === 201 || !data.responseCode);
         if (isSuccess) {
           const resData = data.responseData || data;
-          let registeredUser = resData.user || resData.newUser;
-          let token = resData.token;
-
-          // Auto-login to obtain session and JWT token immediately
-          try {
-            const loginRes = await fetch(`${API_URL}/userLogin`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ mail: cleanMail, password }),
-            });
-            const loginData = await loginRes.json();
-            if (loginRes.ok && loginData.responseData?.token) {
-              token = loginData.responseData.token;
-              registeredUser = loginData.responseData.user || registeredUser;
-            }
-          } catch (loginErr) {
-            console.warn("Auto login after registration failed:", loginErr);
-          }
-
-          if (registeredUser && token) {
-            const normalized = normalizeUser(registeredUser);
-            persist(normalized, token);
-            return normalized;
-          }
-
-          const fallbackUser = normalizeUser(registeredUser || {
+          const registeredUser = resData.user || resData.newUser || {
             username: username.trim(),
             mail: cleanMail,
             address: cleanAddress,
             age: parsedAge,
             role: "user",
-          });
-          return fallbackUser;
+          };
+
+          // Do NOT auto-login or persist token — user must log in after registering
+          return normalizeUser(registeredUser);
         } else {
           let errorMessage = data.responseMessage || data.message || data.msg;
           if (errorMessage === "validation error") {

@@ -3,6 +3,7 @@ import jsonwebtoken from "jsonwebtoken";
 import { env } from "../env.js";
 import user from "../model/userData.js";
 import { responseManager } from "../middleware/responseManager.js";
+import { makeActivity } from "../services/activityService.js";
 
 export const userRegistration = async (req, res) => {
   const { username, address, age, password, role } = req.body;
@@ -11,7 +12,7 @@ export const userRegistration = async (req, res) => {
   try {
     const cleanMail = typeof rawMail === "string" ? rawMail.trim().toLowerCase() : "";
     if (!cleanMail) {
-      return responseManager.error(res, 400, "Email is required");
+      return responseManager.error(res, 400, "Mail is required");
     }
 
     const existingUser = await user.findOne({
@@ -24,7 +25,7 @@ export const userRegistration = async (req, res) => {
       return responseManager.error(
         res,
         409,
-        "This email is already registered. The same email cannot be used for another account."
+        "This mail is already registered. The same mail cannot be used for another account."
       );
     }
 
@@ -41,6 +42,13 @@ export const userRegistration = async (req, res) => {
       role: assignedRole,
     });
     await newUser.save();
+
+    await makeActivity(
+      newUser._id,
+      "ACCOUNT_CREATED",
+      null,
+      `User account created with mail ${cleanMail}`
+    );
 
     const token = jsonwebtoken.sign(
       {
@@ -69,7 +77,7 @@ export const userRegistration = async (req, res) => {
       return responseManager.error(
         res,
         409,
-        "This email is already registered. The same email cannot be used for another account."
+        "This mail is already registered. The same mail cannot be used for another account."
       );
     }
     return responseManager.error(res, 500, error.message || "Registration failed");
@@ -82,7 +90,7 @@ export const userLogin = async (req, res) => {
 
   try {
     if (!rawMail || !password) {
-      return responseManager.error(res, 400, "Email and password are required");
+      return responseManager.error(res, 400, "Mail and password are required");
     }
 
     const cleanMail = typeof rawMail === "string" ? rawMail.trim().toLowerCase() : "";
@@ -99,8 +107,16 @@ export const userLogin = async (req, res) => {
 
     const verify = await bcrypt.compare(password, existingUser.password);
     if (!verify) {
-      return responseManager.error(res, 400, "Invalid email or password");
+      return responseManager.error(res, 400, "Invalid mail or password");
     }
+
+    // Log user activity for logging in
+    await makeActivity(
+      existingUser._id,
+      "USER_LOGIN",
+      null,
+      `User ${existingUser.username} logged in successfully`
+    );
 
     const token = jsonwebtoken.sign(
       {

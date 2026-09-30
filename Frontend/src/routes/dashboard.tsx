@@ -4,15 +4,30 @@ import { toast } from "sonner";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { ItemCard } from "@/components/ItemCard";
 import { Loader } from "@/components/Loader";
-import { Package, Activity as ActivityIcon, Plus, CheckCircle, Clock, Heart } from "lucide-react";
+import {
+  Package,
+  Activity as ActivityIcon,
+  Plus,
+  CheckCircle,
+  Clock,
+  Heart,
+  Gift,
+  LogIn,
+  UserCheck,
+  Star,
+  ShieldCheck,
+  ArrowRight,
+  History,
+  Sparkles,
+  ExternalLink,
+} from "lucide-react";
 import { API_BASE_URL as API_URL } from "@/config/api";
 import { formatNepalDateTime } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
-    meta: [{ title: "My Dashboard — Re-Nest" }],
+    meta: [{ title: "My Dashboard & Track History — Re-Nest" }],
   }),
   component: () => (
     <ProtectedRoute>
@@ -25,6 +40,7 @@ function UserDashboardPage() {
   const { user } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<string>("ALL");
 
   const fetchDashboard = async () => {
     setLoading(true);
@@ -54,131 +70,81 @@ function UserDashboardPage() {
     fetchDashboard();
   }, []);
 
-  const handleDelete = async (uuid: string) => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
-    try {
-      const token = localStorage.getItem("Re-Nest.token");
-      const response = await fetch(`${API_URL}/products/deleteProduct/${uuid}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const resData = await response.json();
-      if (response.ok) {
-        toast.success("Product deleted successfully");
-        fetchDashboard();
-      } else {
-        toast.error(resData.responseMessage || "Failed to delete product");
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error("Error deleting product");
-    }
-  };
-
-  const handleApprove = async (uuid: string) => {
-    try {
-      const token = localStorage.getItem("Re-Nest.token");
-      const response = await fetch(`${API_URL}/products/approveProduct/${uuid}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const resData = await response.json();
-      if (response.ok) {
-        toast.success("Product approved successfully!");
-        fetchDashboard();
-      } else {
-        toast.error(resData.responseMessage || "Failed to approve product");
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error("Error approving product");
-    }
-  };
-
-  const handleReject = async (uuid: string) => {
-    try {
-      const token = localStorage.getItem("Re-Nest.token");
-      const response = await fetch(`${API_URL}/products/rejectProduct/${uuid}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const resData = await response.json();
-      if (response.ok) {
-        toast.success("Product rejected");
-        fetchDashboard();
-      } else {
-        toast.error(resData.responseMessage || "Failed to reject product");
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error("Error rejecting product");
-    }
-  };
-
-  const handleGiveItem = async (uuid: string, recipientId: string, recipientName: string, maxQty: number = 1) => {
-    let quantityToGive = 1;
-    if (maxQty > 1) {
-      const input = window.prompt(`How many units would you like to give to ${recipientName}? (1 to ${maxQty} available)`, "1");
-      if (!input) return;
-      quantityToGive = Math.max(1, Math.min(parseInt(input, 10) || 1, maxQty));
-    } else {
-      if (!confirm(`Are you sure you want to give this item to ${recipientName}?`)) return;
-    }
-
-    try {
-      const token = localStorage.getItem("Re-Nest.token");
-      const response = await fetch(`${API_URL}/products/giveProduct/${uuid}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ recipientId, quantityToGive }),
-      });
-      const resData = await response.json();
-      if (response.ok) {
-        toast.success(resData.responseMessage || `🎉 Successfully assigned ${quantityToGive} unit(s) to ${recipientName}!`);
-        fetchDashboard();
-      } else {
-        toast.error(resData.responseMessage || "Failed to assign item");
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error("Error assigning item");
-    }
-  };
-
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "Recently";
     return formatNepalDateTime(dateStr);
   };
 
   if (loading) {
-    return <Loader text="Loading dashboard…" fullHeight />;
+    return <Loader text="Loading your track history & dashboard…" fullHeight />;
   }
 
-  const products = data?.products || [];
-  const activities = data?.activities || [];
+  const activities: any[] = data?.activities || [];
+  const stats = data?.stats || {
+    totalDonated: 0,
+    totalGiven: 0,
+    totalRequested: 0,
+    totalReviews: 0,
+    totalActivities: activities.length,
+  };
+
+  // Filter activities based on selection
+  const filteredActivities = activities.filter((act) => {
+    if (activeFilter === "ALL") return true;
+    const actName = (act.activity || "").toUpperCase();
+    if (activeFilter === "LOGINS") return actName.includes("LOGIN") || actName.includes("AUTH");
+    if (activeFilter === "DONATIONS") return actName.includes("PRODUCT_ADDED") || actName.includes("DONAT");
+    if (activeFilter === "REQUESTS") return actName.includes("INTEREST") || actName.includes("GIFT");
+    if (activeFilter === "REVIEWS") return actName.includes("RATING") || actName.includes("REVIEW");
+    return true;
+  });
+
+  const getActivityIcon = (actType: string) => {
+    const t = (actType || "").toUpperCase();
+    if (t.includes("LOGIN")) {
+      return <LogIn className="size-4 text-sky-500" />;
+    }
+    if (t.includes("PRODUCT_ADDED") || t.includes("DONAT")) {
+      return <Plus className="size-4 text-emerald-500" />;
+    }
+    if (t.includes("GIFT") || t.includes("GIVEN")) {
+      return <Gift className="size-4 text-amber-500" />;
+    }
+    if (t.includes("INTEREST")) {
+      return <Heart className="size-4 text-rose-500" />;
+    }
+    if (t.includes("RATING") || t.includes("REVIEW")) {
+      return <Star className="size-4 text-yellow-500" />;
+    }
+    if (t.includes("ACCOUNT")) {
+      return <UserCheck className="size-4 text-indigo-500" />;
+    }
+    return <ActivityIcon className="size-4 text-primary" />;
+  };
+
+  const getActivityBadgeClass = (actType: string) => {
+    const t = (actType || "").toUpperCase();
+    if (t.includes("LOGIN")) return "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20";
+    if (t.includes("PRODUCT_ADDED") || t.includes("DONAT")) return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
+    if (t.includes("GIFT") || t.includes("GIVEN")) return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
+    if (t.includes("INTEREST")) return "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20";
+    if (t.includes("RATING") || t.includes("REVIEW")) return "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20";
+    return "bg-primary/10 text-primary border-primary/20";
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      {/* Admin Notice Banner */}
+      {/* Admin Notice */}
       {user?.role === "admin" && (
-        <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-emerald-950 dark:text-emerald-200 shadow-sm">
+        <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-900 dark:text-emerald-200">
           <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs text-lg">
-              🛡️
-            </span>
+            <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+              <ShieldCheck className="size-5" />
+            </div>
             <div>
-              <p className="font-bold text-sm text-foreground">You are logged in with the Administrator role</p>
+              <p className="font-semibold text-sm">You have Administrator Privileges</p>
               <p className="text-xs text-muted-foreground">
-                Manage community product approvals, category controls, user accounts, and platform metrics in the Admin Dashboard.
+                Manage approvals, categories, user roles, and platform metrics in the Admin Dashboard.
               </p>
             </div>
           </div>
@@ -189,9 +155,9 @@ function UserDashboardPage() {
       )}
 
       {/* Header Profile Section */}
-      <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+      <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary text-xl font-bold uppercase">
+          <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary text-xl font-bold uppercase ring-2 ring-primary/20">
             {user?.username ? user.username.slice(0, 1) : "U"}
           </div>
           <div>
@@ -203,228 +169,171 @@ function UserDashboardPage() {
                 </span>
               )}
             </div>
-            {user?.role === "admin" && (
-              <p className="text-sm text-muted-foreground">{user?.mail}</p>
+            <p className="text-sm text-muted-foreground">{user?.mail}</p>
+            {user?.address && (
+              <p className="text-xs text-muted-foreground/80 mt-0.5">{user.address}</p>
             )}
           </div>
         </div>
-        <Button asChild className="rounded-full">
-          <Link to="/donate">
-            <Plus className="mr-2 size-4" /> Donate New Item
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline" className="rounded-full">
+            <Link to="/donations">
+              <Gift className="mr-2 size-4 text-emerald-600" /> My Donations ({stats.totalDonated || 0})
+            </Link>
+          </Button>
+          <Button asChild className="rounded-full">
+            <Link to="/donate">
+              <Plus className="mr-2 size-4" /> Donate New Item
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-        {/* Products Section */}
-        <div>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Package className="size-5 text-primary" /> My Uploaded Items ({products.length})
-            </h2>
+      {/* Stats Summary Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground font-medium">Items Donated</p>
+            <Gift className="size-4 text-emerald-500" />
+          </div>
+          <p className="text-2xl font-bold mt-2 text-foreground">{stats.totalDonated || 0}</p>
+          <Link to="/donations" className="text-[11px] text-primary hover:underline flex items-center gap-1 mt-1">
+            View My Donations <ArrowRight className="size-3" />
+          </Link>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground font-medium">Rehomed / Given</p>
+            <CheckCircle className="size-4 text-sky-500" />
+          </div>
+          <p className="text-2xl font-bold mt-2 text-foreground">{stats.totalGiven || 0}</p>
+          <p className="text-[11px] text-muted-foreground mt-1">Benefited neighbours</p>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground font-medium">Expressed Interest</p>
+            <Heart className="size-4 text-rose-500" />
+          </div>
+          <p className="text-2xl font-bold mt-2 text-foreground">{stats.totalRequested || 0}</p>
+          <Link to="/requests" className="text-[11px] text-primary hover:underline flex items-center gap-1 mt-1">
+            View My Requests <ArrowRight className="size-3" />
+          </Link>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground font-medium">Total Actions Logged</p>
+            <ActivityIcon className="size-4 text-indigo-500" />
+          </div>
+          <p className="text-2xl font-bold mt-2 text-foreground">{activities.length}</p>
+          <p className="text-[11px] text-muted-foreground mt-1">Tracked platform events</p>
+        </div>
+      </div>
+
+      {/* Main Track History Section */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
+          <div>
+            <div className="flex items-center gap-2">
+              <History className="size-5 text-primary" />
+              <h2 className="text-xl font-bold tracking-tight">User Track History</h2>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Complete chronological record of all actions performed after logging into the platform.
+            </p>
           </div>
 
-          {products.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border p-12 text-center">
-              <p className="text-muted-foreground">You haven't uploaded any items yet.</p>
-              <Button asChild variant="outline" className="mt-4 rounded-full">
-                <Link to="/donate">Donate an item</Link>
-              </Button>
-            </div>
-          ) : (
-            <div className="grid gap-6 sm:grid-cols-2">
-              {products.map((p: any) => (
-                <div key={p.UUID || p._id} className="relative flex flex-col justify-between rounded-2xl border border-border bg-card overflow-hidden p-4 shadow-sm">
-                  <div className="mb-3 flex items-center justify-between">
-                    {p.isApproved ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                        <CheckCircle className="size-3.5" /> Approved & Public
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                        <Clock className="size-3.5" /> Pending Admin Approval
-                      </span>
-                    )}
-                    <button
-                      onClick={() => handleDelete(p.UUID)}
-                      className="text-xs text-destructive hover:underline font-medium"
-                    >
-                      Delete
-                    </button>
-                  </div>
+          {/* Activity Category Filters */}
+          <div className="flex flex-wrap gap-1.5 bg-secondary/50 p-1 rounded-xl text-xs">
+            {[
+              { id: "ALL", label: `All (${activities.length})` },
+              { id: "LOGINS", label: "Logins" },
+              { id: "DONATIONS", label: "Donations" },
+              { id: "REQUESTS", label: "Requests" },
+              { id: "REVIEWS", label: "Reviews" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveFilter(tab.id)}
+                className={`px-3 py-1 rounded-lg font-medium transition-all ${
+                  activeFilter === tab.id
+                    ? "bg-background text-foreground shadow-sm font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-                  <ItemCard item={p} onInterestToggle={fetchDashboard} />
-
-                  {/* Given To Recipient Banner */}
-                  {p.givenTo && (
-                    <div className="mt-3 flex items-center justify-between rounded-xl bg-emerald-500/15 border border-emerald-500/30 p-2.5 text-emerald-900 dark:text-emerald-300">
-                      <div className="flex items-center gap-2 text-xs font-semibold min-w-0">
-                        <CheckCircle className="size-4 text-emerald-600 shrink-0" />
-                        <span className="truncate">
-                          Gifted to {p.givenTo.username || "Neighbour"}
-                        </span>
-                      </div>
-                      <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-700 text-white px-2 py-0.5 rounded-full">
-                        Gifted
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Interested Users Section */}
-                  <div className="mt-3 rounded-xl border border-border/70 bg-secondary/30 p-3">
-                    <div className="flex items-center justify-between text-xs font-medium">
-                      <span className="flex items-center gap-1.5 text-foreground font-semibold">
-                        <Heart className="size-3.5 text-emerald-600 fill-emerald-600" /> Interested ({p.interestedUsers?.length || 0})
-                      </span>
-
-                      {/* Avatar Stack Header */}
-                      {p.interestedUsers && p.interestedUsers.length > 0 && (
-                        <div className="flex items-center -space-x-1.5 overflow-hidden">
-                          {p.interestedUsers.slice(0, 3).map((u: any, idx: number) => {
-                            const uObj = u?.user || u;
-                            const uname = uObj.username || "U";
-                            return (
-                              <span
-                                key={uObj._id || uObj.id || idx}
-                                title={uObj.username}
-                                className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground ring-2 ring-background uppercase"
-                              >
-                                {uname.slice(0, 1)}
-                              </span>
-                            );
-                          })}
-                          {p.interestedUsers.length > 3 && (
-                            <span className="inline-flex size-5 items-center justify-center rounded-full bg-secondary text-[9px] font-bold text-muted-foreground ring-2 ring-background">
-                              +{p.interestedUsers.length - 3}
-                            </span>
-                          )}
+        {/* Timeline List */}
+        {filteredActivities.length === 0 ? (
+          <div className="py-12 text-center">
+            <Sparkles className="mx-auto size-10 text-muted-foreground/40 mb-3" />
+            <h3 className="text-base font-semibold">No track history found</h3>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              {activeFilter === "ALL"
+                ? "Actions you perform such as logging in, donating items, or expressing interest will be recorded here."
+                : `No activity found under category "${activeFilter}".`}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-6 flow-root">
+            <ul className="-mb-8">
+              {filteredActivities.map((act: any, idx: number) => {
+                const isLast = idx === filteredActivities.length - 1;
+                return (
+                  <li key={act._id || idx}>
+                    <div className="relative pb-8">
+                      {!isLast && (
+                        <span
+                          className="absolute top-5 left-5 -ml-px h-full w-0.5 bg-border"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <div className="relative flex items-start space-x-3.5">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card border border-border shadow-sm">
+                          {getActivityIcon(act.activity)}
                         </div>
-                      )}
-                    </div>
-
-                    {p.interestedUsers && p.interestedUsers.length > 0 ? (
-                      <div className="mt-2.5 max-h-48 overflow-y-auto space-y-2 pr-1 text-xs">
-                        {p.interestedUsers.map((u: any, idx: number) => {
-                          const uObj = u?.user || u;
-                          const uname = uObj.username || "Anonymous";
-                          const purpose = u?.purpose || "";
-                          const recipientId = uObj._id || uObj.id;
-                          const isGivenToThisUser =
-                            p.givenTo && (p.givenTo._id === recipientId || p.givenTo === recipientId);
-
-                          return (
-                            <div
-                              key={uObj._id || uObj.id || idx}
-                              className="rounded-lg border border-border/50 bg-background p-2 text-xs transition-colors hover:bg-secondary/40 space-y-1.5"
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase">
-                                    {uname.slice(0, 1)}
-                                  </span>
-                                  <div className="min-w-0">
-                                    <p className="font-semibold text-foreground truncate leading-tight">{uname}</p>
-                                  </div>
-                                </div>
-
-                                {(p.quantity === undefined || p.quantity > 0) && p.status !== "given" ? (
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    onClick={() => handleGiveItem(p.UUID || p._id, recipientId, uname, p.quantity || 1)}
-                                    className="h-7 rounded-full bg-emerald-700 text-white hover:bg-emerald-800 text-[10px] font-semibold px-2.5 shrink-0"
-                                  >
-                                    Give Item
-                                  </Button>
-                                ) : isGivenToThisUser ? (
-                                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full dark:bg-emerald-950">
-                                    Recipient
-                                  </span>
-                                ) : null}
-                              </div>
-
-                              {purpose ? (
-                                <p className="text-[11px] text-muted-foreground bg-muted/40 rounded-md p-2 border border-border/30 italic">
-                                  "{purpose}"
-                                </p>
-                              ) : (
-                                <p className="text-[10px] text-muted-foreground italic">No purpose details provided.</p>
-                              )}
+                        <div className="min-w-0 flex-1 pt-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${getActivityBadgeClass(
+                                  act.activity
+                                )}`}
+                              >
+                                {act.activity || "ACTION"}
+                              </span>
+                              <p className="text-xs font-medium text-foreground">
+                                {act.details || "Activity performed on the platform"}
+                              </p>
                             </div>
-                          );
-                        })}
+                            {act.product && (
+                              <p className="text-xs text-primary font-medium mt-1 flex items-center gap-1">
+                                <Package className="size-3.5" />
+                                {typeof act.product === "object"
+                                  ? act.product.productName
+                                  : act.productName || "Related Item"}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                            {formatDate(act.createdAt)}
+                          </span>
+                        </div>
                       </div>
-                    ) : (
-                      <p className="mt-1 text-[11px] text-muted-foreground italic">
-                        No neighbours have expressed interest yet.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Admin Direct Quick Actions */}
-                  {user?.role === "admin" && (
-                    <div className="mt-4 flex gap-2 pt-3 border-t border-border">
-                      {!p.isApproved ? (
-                        <Button
-                          size="sm"
-                          className="flex-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
-                          onClick={() => handleApprove(p.UUID)}
-                        >
-                          Approve
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 rounded-full text-amber-600 border-amber-500/30 text-xs"
-                          onClick={() => handleReject(p.UUID)}
-                        >
-                          Revoke Approval
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="rounded-full text-destructive text-xs"
-                        onClick={() => handleDelete(p.UUID)}
-                      >
-                        Delete
-                      </Button>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar: Activity History */}
-        <div>
-          <h2 className="mb-4 text-xl font-semibold flex items-center gap-2">
-            <ActivityIcon className="size-5 text-primary" /> Activity Log
-          </h2>
-
-          {activities.length === 0 ? (
-            <div className="rounded-2xl border border-border p-6 text-center text-sm text-muted-foreground">
-              No activity logged yet.
-            </div>
-          ) : (
-            <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
-              {activities.map((act: any) => (
-                <div key={act._id} className="border-b border-border/50 pb-2.5 last:border-0 last:pb-0">
-                  <p className="text-xs font-semibold text-primary uppercase tracking-wide">{act.action}</p>
-                  <p className="text-xs text-foreground mt-0.5">{act.details}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {formatDate(act.createdAt)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </div>
-
     </div>
   );
 }

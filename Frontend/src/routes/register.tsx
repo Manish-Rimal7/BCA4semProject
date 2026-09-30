@@ -26,7 +26,7 @@ function RegisterPage() {
   const [username, setUsername] = useState("");
   const [address, setAddress] = useState("");
   const [age, setAge] = useState("");
-  const [email, setEmail] = useState("");
+  const [mail, setMail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
 
@@ -47,8 +47,8 @@ function RegisterPage() {
         className="space-y-4"
         onSubmit={async (e) => {
           e.preventDefault();
-          if (!username.trim() || !email.trim() || !password) {
-            toast.error("Please enter your name, email, and password");
+          if (!username.trim() || !mail.trim() || !password) {
+            toast.error("Please enter your name, mail, and password");
             return;
           }
           if (!/^[A-Za-z\s]+$/.test(username.trim())) {
@@ -65,19 +65,15 @@ function RegisterPage() {
           }
 
           try {
-            const newUser = await register(
+            await register(
               username.trim(),
               address.trim(),
               age ? Number(age) : undefined,
-              email.trim().toLowerCase(),
+              mail.trim().toLowerCase(),
               password
             );
-            toast.success("Account created successfully!");
-            if (newUser?.role === "admin") {
-              navigate({ to: "/admin" });
-            } else {
-              navigate({ to: "/dashboard" });
-            }
+            toast.success("Account created successfully! Please log in with your mail and password.");
+            navigate({ to: "/login" });
           } catch (error: any) {
             toast.error(error?.message || "Registration failed. Please try again.");
           }
@@ -92,10 +88,10 @@ function RegisterPage() {
         <Field label="Address (Optional)" value={address} onChange={setAddress} placeholder="Kathmandu" />
         <Field label="Age (Optional)" type="number" value={age} onChange={setAge} placeholder="21" />
         <Field
-          label="Email"
+          label="Mail"
           type="email"
-          value={email}
-          onChange={setEmail}
+          value={mail}
+          onChange={setMail}
           placeholder="manish@example.com"
         />
         <Field

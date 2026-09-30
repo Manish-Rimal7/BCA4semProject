@@ -10,12 +10,14 @@ import credential from "../middleware/tokenChecker.js";
 
 const router = express.Router();
 
+// List categories
+router.get("/", getAllCategories);
 router.get("/getAllCategories", getAllCategories);
+
+// Category actions
 router.post("/addCategory", credential, addCategory);
-router.post("/updateCategory/:id", credential, updateCategory);
-router.put("/updateCategory/:id", credential, updateCategory);
-router.post("/deleteCategory/:id", credential, deleteCategory);
-router.delete("/deleteCategory/:id", credential, deleteCategory);
+router.route("/updateCategory/:id").post(credential, updateCategory).put(credential, updateCategory);
+router.route("/deleteCategory/:id").post(credential, deleteCategory).delete(credential, deleteCategory);
 router.get("/getCategory/:categoryName", existingCategory);
 
 export default router;

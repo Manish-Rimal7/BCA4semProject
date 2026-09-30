@@ -23,7 +23,7 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [mail, setMail] = useState("");
   const [password, setPassword] = useState("");
 
   return (
@@ -47,13 +47,13 @@ function LoginPage() {
         // 1. Make the submission handler async
         onSubmit={async (e) => {
           e.preventDefault();
-          if (!email || !password) {
-            toast.error("Enter your email and password");
+          if (!mail || !password) {
+            toast.error("Enter your mail and password");
             return;
           }
 
           try {
-            const loggedInUser = await login(email, password);
+            const loggedInUser = await login(mail, password);
             if (loggedInUser?.role === "admin") {
               toast.success(`Welcome back, ${loggedInUser.username || "Admin"}! Accessing Admin Dashboard.`);
               navigate({ to: "/admin" });
@@ -67,10 +67,10 @@ function LoginPage() {
         }}
       >
         <Field
-          label="Email"
+          label="Mail"
           type="email"
-          value={email}
-          onChange={setEmail}
+          value={mail}
+          onChange={setMail}
           placeholder="manish@example.com"
         />
         <Field

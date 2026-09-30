@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { useEffect, type ReactNode } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Lock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,14 +8,27 @@ import { Loader } from "@/components/Loader";
 export function ProtectedRoute({
   children,
   adminOnly = false,
+  redirectTo,
 }: {
   children: ReactNode;
   adminOnly?: boolean;
+  redirectTo?: string;
 }) {
   const { user, ready } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (ready && !user && redirectTo) {
+      navigate({ to: redirectTo as any });
+    }
+  }, [ready, user, redirectTo, navigate]);
 
   if (!ready) {
     return <Loader text="Verifying authentication…" fullHeight />;
+  }
+
+  if (!user && redirectTo) {
+    return <Loader text="Redirecting to create account…" fullHeight />;
   }
 
   if (!user || (adminOnly && user.role !== "admin")) {

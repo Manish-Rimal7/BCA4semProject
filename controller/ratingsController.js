@@ -39,7 +39,7 @@ export const addRating = async (req, res) => {
       // Send email notification for review
       await sendReviewEmail({
         username: req.user?.username || "Anonymous User",
-        userEmail: req.user?.mail || req.user?.email || "unknown@renest.org",
+        // userEmail: req.user?.mail || req.user?.email || "unknown@renest.org",
         rating: Rating,
         comment: comment || "",
         experienceType: newRating.experienceType,
@@ -151,10 +151,9 @@ export const addRating = async (req, res) => {
     }
 
     // Calculate average rating strictly from verified ratings of other users (exclude product owner)
-    const validRatings = await RatingModel.find({
-      product: product._id,
-      user: { $ne: product.addedBy },
-    });
+    const validRatings = product.ratings.filter(
+      (r) => r.user && r.user.toString() !== product.addedBy.toString()
+    );
     if (validRatings.length > 0) {
       const sum = validRatings.reduce((acc, curr) => acc + (curr.productRating || curr.rating || 0), 0);
       product.averageRating = sum / validRatings.length;
@@ -174,7 +173,7 @@ export const addRating = async (req, res) => {
     // Send email notification for review
     await sendReviewEmail({
       username: req.user?.username || "Anonymous User",
-      userEmail: req.user?.mail || req.user?.email || "unknown@renest.org",
+      // userEmail: req.user?.mail || req.user?.email || "unknown@renest.org",
       rating: dRating,
       comment: comment || "",
       experienceType: "receiver",

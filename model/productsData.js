@@ -114,7 +114,7 @@ const productSchema = mongoose.Schema({
       },
     },
   ],
-}, { timestamps: true });
+})
 
 productSchema.index({ isApproved: 1, createdAt: -1 });
 productSchema.index({ status: 1 });
@@ -122,5 +122,4 @@ productSchema.index({ addedBy: 1 });
 productSchema.index({ "interestedUsers.user": 1 });
 
 export default mongoose.model("products", productSchema);
-
 

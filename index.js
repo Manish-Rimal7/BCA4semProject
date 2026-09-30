@@ -5,12 +5,12 @@ import productsRouter from "./routes/productsRoutes.js";
 import categoryRouter from "./routes/categoryRoutes.js";
 import ratingRouter from "./routes/ratingRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
+import donationRouter from "./routes/donationRoutes.js";
 import { db } from "./config/db.js";
 import { env } from "./env.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import feedbackRouter from "./routes/feedbackRoute.js";
-import credential from "./middleware/tokenChecker.js";
-import { getMe } from "./controller/userAuth.js";
+
 await db();
 
 const app = express();
@@ -24,21 +24,16 @@ app.use(
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ limit: "5mb", extended: true }));
 
-
 app.use("/api", router);
 app.use("/api/products", productsRouter);
 app.use("/api/category", categoryRouter);
 app.use("/api/cart", cartRoutes);
 app.use("/api/rating", ratingRouter);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/donations", donationRouter);
+app.use("/api/myDonations", donationRouter);
+app.use("/api/mydonations", donationRouter);
 app.use("/api/feedback", feedbackRouter);
-app.get("/api/profile", credential, getMe);
-app.get("/getme", credential, getMe);
-app.get("/getMe", credential, getMe);
-
-app.listen(env.PORT, () => {
-  console.log(`The server is running at the port ${env.PORT}`);
-});
 
 app.get("/health", (req, res) => {
   res
@@ -46,11 +41,15 @@ app.get("/health", (req, res) => {
     .json({ success: true, status: "OK", message: "API is running..." });
 });
 
-// // if (Number(env.PORT) !== 4050) {
-// //   try {
-// //     const backupServer = app.listen(4050, () => {
-// //       console.log("The server is also listening at port 4050");
-// //     });
-//     backupServer.on("error", () => { });
-//   } catch (e) { }
-// }
+app.listen(env.PORT, () => {
+  console.log(`The server is running at the port ${env.PORT}`);
+});
+
+if (Number(env.PORT) !== 4050) {
+  try {
+    const backup = app.listen(4050, () => {
+      console.log("The server is also listening at port 4050");
+    });
+    backup.on("error", () => { });
+  } catch (e) { }
+}

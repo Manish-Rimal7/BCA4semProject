@@ -11,15 +11,26 @@ import {
   giveProduct,
   getMyRequests,
 } from "../middleware/productController.js";
+import { getMyDonations } from "../controller/donationController.js";
 import credential, { optionalCredential } from "../middleware/tokenChecker.js";
 import adminChecker from "../middleware/adminChecker.js";
 
 const router = express.Router();
 
-router.post("/addProduct", credential, existingProducts, addProduct);
+// Products collection
+router.get("/", optionalCredential, getAllProducts);
 router.get("/getProducts", optionalCredential, getAllProducts);
+router.post("/addProduct", credential, existingProducts, addProduct);
+
+// User-specific product collections
 router.get("/myRequests", credential, getMyRequests);
+router.get("/myDonations", credential, getMyDonations);
+
+// Product by UUID
 router.get("/getProducts/:UUID", optionalCredential, getProduct);
+router.get("/:UUID", optionalCredential, getProduct);
+
+// Actions on product
 router.post("/deleteProduct/:UUID", credential, deleteProduct);
 router.post("/approveProduct/:UUID", credential, adminChecker, approveProduct);
 router.post("/rejectProduct/:UUID", credential, adminChecker, rejectProduct);
@@ -27,5 +38,3 @@ router.post("/toggleInterest/:UUID", credential, toggleInterest);
 router.post("/giveProduct/:UUID", credential, giveProduct);
 
 export default router;
-
-

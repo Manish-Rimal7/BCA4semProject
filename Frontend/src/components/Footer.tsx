@@ -108,7 +108,13 @@ export function Footer() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
             {/* Brand */}
             <div className="md:col-span-1 space-y-4">
-              <Link to="/" className="flex items-center gap-2">
+              <Link
+                to="/"
+                onClick={() => {
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="flex items-center gap-2 cursor-pointer"
+              >
                 <span className="flex size-9 items-center justify-center rounded-xl bg-[image:var(--gradient-moss)]">
                   <Sprout className="size-5 text-white" />
                 </span>
@@ -138,6 +144,9 @@ export function Footer() {
                 <li>
                   <Link
                     to="/"
+                    onClick={() => {
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
                     className="text-muted-foreground hover:text-emerald-700 transition-colors"
                   >
                     Browse Feed
