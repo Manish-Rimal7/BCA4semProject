@@ -45,24 +45,27 @@ export const getMyDonations = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    const productIds = products.map((product) => product._id);
-
-    const productRatings =
-      productIds.length > 0
-        ? await Rating.find({
+    let productRatings = [];
+    try {
+      const productIds = (products || []).map((p) => p._id).filter(Boolean);
+      if (productIds.length > 0) {
+        productRatings = await Rating.find({
           product: { $in: productIds },
           user: { $ne: userId },
         })
           .populate("user", "username")
-          .lean()
-        : [];
+          .lean();
+      }
+    } catch (ratingErr) {
+      console.warn("Could not load ratings for donations:", ratingErr);
+    }
 
-    const productsWithRatings = products.map((product) => {
-      const matching = productRatings.filter(
-        (r) =>
-          r.product &&
-          (r.product._id || r.product).toString() === product._id.toString()
-      );
+    const productsWithRatings = (products || []).map((product) => {
+      const pId = (product._id || product.id || "").toString();
+      const matching = (productRatings || []).filter((r) => {
+        const rProdId = (r.product?._id || r.product || "").toString();
+        return rProdId && rProdId === pId;
+      });
       const embedded = Array.isArray(product.ratings) ? product.ratings : [];
       const prodRatings = matching.length > 0 ? matching : embedded;
 
@@ -78,11 +81,11 @@ export const getMyDonations = async (req, res) => {
       "My donations loaded successfully",
       {
         products: productsWithRatings,
-        totalDonations: products.length,
+        totalDonations: productsWithRatings.length,
       }
     );
   } catch (error) {
     console.error("getMyDonations error:", error);
-    return responseManager.error(res, 500, "Unable to load my donations");
+    return responseManager.error(res, 500, error.message || "Unable to load my donations");
   }
 };
