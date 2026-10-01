@@ -15,3 +15,5 @@ export const responseManager = {
   },
 };
 
+
+//dashboard maa intrest added ra removed both maa red dekhaudai xa that should be different

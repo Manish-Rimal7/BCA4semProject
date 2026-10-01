@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/Loader";
+import { MyDonationsManager } from "@/components/MyDonationsManager";
 import {
   Package,
   Activity as ActivityIcon,
@@ -21,6 +22,7 @@ import {
   History,
   Sparkles,
   ExternalLink,
+  Layers,
 } from "lucide-react";
 import { API_BASE_URL as API_URL } from "@/config/api";
 import { formatNepalDateTime } from "@/lib/utils";
@@ -40,12 +42,39 @@ function UserDashboardPage() {
   const { user } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [mainTab, setMainTab] = useState<"donations" | "history">("donations");
   const [activeFilter, setActiveFilter] = useState<string>("ALL");
+
+  const handleDonationStatsChange = useCallback(
+    (newStats: { totalDonated: number; totalGiven: number }) => {
+      setData((prev: any) => {
+        if (!prev) return prev;
+        if (
+          prev.stats?.totalDonated === newStats.totalDonated &&
+          prev.stats?.totalGiven === newStats.totalGiven
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          stats: {
+            ...prev.stats,
+            totalDonated: newStats.totalDonated,
+            totalGiven: newStats.totalGiven,
+          },
+        };
+      });
+    },
+    []
+  );
 
   const fetchDashboard = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("Re-Nest.token");
+      const token =
+        localStorage.getItem("Re-Nest.token") ||
+        localStorage.getItem("token");
+
       const response = await fetch(`${API_URL}/dashboard/dashboard`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -176,10 +205,12 @@ function UserDashboardPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="outline" className="rounded-full">
-            <Link to="/donations">
-              <Gift className="mr-2 size-4 text-emerald-600" /> My Donations ({stats.totalDonated || 0})
-            </Link>
+          <Button
+            variant={mainTab === "donations" ? "default" : "outline"}
+            className="rounded-full"
+            onClick={() => setMainTab("donations")}
+          >
+            <Gift className="mr-2 size-4 text-emerald-600" /> My Donations ({stats.totalDonated || 0})
           </Button>
           <Button asChild className="rounded-full">
             <Link to="/donate">
@@ -191,18 +222,28 @@ function UserDashboardPage() {
 
       {/* Stats Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div
+          onClick={() => setMainTab("donations")}
+          className={`cursor-pointer rounded-2xl border p-4 shadow-sm transition-all ${
+            mainTab === "donations"
+              ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500"
+              : "border-border bg-card hover:bg-muted/50"
+          }`}
+        >
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground font-medium">Items Donated</p>
             <Gift className="size-4 text-emerald-500" />
           </div>
           <p className="text-2xl font-bold mt-2 text-foreground">{stats.totalDonated || 0}</p>
-          <Link to="/donations" className="text-[11px] text-primary hover:underline flex items-center gap-1 mt-1">
-            View My Donations <ArrowRight className="size-3" />
-          </Link>
+          <div className="text-[11px] text-primary hover:underline flex items-center gap-1 mt-1 font-medium">
+            Manage in Dashboard <ArrowRight className="size-3" />
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div
+          onClick={() => setMainTab("donations")}
+          className="cursor-pointer rounded-2xl border border-border bg-card p-4 shadow-sm hover:bg-muted/50 transition-all"
+        >
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground font-medium">Rehomed / Given</p>
             <CheckCircle className="size-4 text-sky-500" />
@@ -222,118 +263,174 @@ function UserDashboardPage() {
           </Link>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div
+          onClick={() => setMainTab("history")}
+          className={`cursor-pointer rounded-2xl border p-4 shadow-sm transition-all ${
+            mainTab === "history"
+              ? "border-primary bg-primary/10 ring-1 ring-primary"
+              : "border-border bg-card hover:bg-muted/50"
+          }`}
+        >
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground font-medium">Total Actions Logged</p>
             <ActivityIcon className="size-4 text-indigo-500" />
           </div>
           <p className="text-2xl font-bold mt-2 text-foreground">{activities.length}</p>
-          <p className="text-[11px] text-muted-foreground mt-1">Tracked platform events</p>
+          <div className="text-[11px] text-primary hover:underline flex items-center gap-1 mt-1 font-medium">
+            View Activity History <ArrowRight className="size-3" />
+          </div>
         </div>
       </div>
 
-      {/* Main Track History Section */}
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
-          <div>
-            <div className="flex items-center gap-2">
-              <History className="size-5 text-primary" />
-              <h2 className="text-xl font-bold tracking-tight">User Track History</h2>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Complete chronological record of all actions performed after logging into the platform.
-            </p>
-          </div>
+      {/* Main Tab Switcher */}
+      <div className="flex items-center justify-between border-b border-border pb-4 mb-6">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMainTab("donations")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+              mainTab === "donations"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            }`}
+          >
+            <Gift className="size-4" />
+            My Donations ({stats.totalDonated || 0})
+          </button>
 
-          {/* Activity Category Filters */}
-          <div className="flex flex-wrap gap-1.5 bg-secondary/50 p-1 rounded-xl text-xs">
-            {[
-              { id: "ALL", label: `All (${activities.length})` },
-              { id: "LOGINS", label: "Logins" },
-              { id: "DONATIONS", label: "Donations" },
-              { id: "REQUESTS", label: "Requests" },
-              { id: "REVIEWS", label: "Reviews" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveFilter(tab.id)}
-                className={`px-3 py-1 rounded-lg font-medium transition-all ${
-                  activeFilter === tab.id
-                    ? "bg-background text-foreground shadow-sm font-semibold"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={() => setMainTab("history")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+              mainTab === "history"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            }`}
+          >
+            <History className="size-4" />
+            Track History ({activities.length})
+          </button>
         </div>
 
-        {/* Timeline List */}
-        {filteredActivities.length === 0 ? (
-          <div className="py-12 text-center">
-            <Sparkles className="mx-auto size-10 text-muted-foreground/40 mb-3" />
-            <h3 className="text-base font-semibold">No track history found</h3>
-            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-              {activeFilter === "ALL"
-                ? "Actions you perform such as logging in, donating items, or expressing interest will be recorded here."
-                : `No activity found under category "${activeFilter}".`}
-            </p>
+        <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground">
+          <Link to="/donations">
+            Open Separate Donations Page <ExternalLink className="ml-1.5 size-3.5" />
+          </Link>
+        </Button>
+      </div>
+
+      {/* Tab 1: My Donations Manager (In Reference of Dashboard) */}
+      {mainTab === "donations" && (
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <MyDonationsManager
+            onStatsChange={handleDonationStatsChange}
+            showDashboardLink={false}
+          />
+        </div>
+      )}
+
+      {/* Tab 2: Activity Track History */}
+      {mainTab === "history" && (
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
+            <div>
+              <div className="flex items-center gap-2">
+                <History className="size-5 text-primary" />
+                <h2 className="text-xl font-bold tracking-tight">User Track History</h2>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Complete chronological record of all actions performed after logging into the platform.
+              </p>
+            </div>
+
+            {/* Activity Category Filters */}
+            <div className="flex flex-wrap gap-1.5 bg-secondary/50 p-1 rounded-xl text-xs">
+              {[
+                { id: "ALL", label: `All (${activities.length})` },
+                { id: "LOGINS", label: "Logins" },
+                { id: "DONATIONS", label: "Donations" },
+                { id: "REQUESTS", label: "Requests" },
+                { id: "REVIEWS", label: "Reviews" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveFilter(tab.id)}
+                  className={`px-3 py-1 rounded-lg font-medium transition-all ${
+                    activeFilter === tab.id
+                      ? "bg-background text-foreground shadow-sm font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
-        ) : (
-          <div className="mt-6 flow-root">
-            <ul className="-mb-8">
-              {filteredActivities.map((act: any, idx: number) => {
-                const isLast = idx === filteredActivities.length - 1;
-                return (
-                  <li key={act._id || idx}>
-                    <div className="relative pb-8">
-                      {!isLast && (
-                        <span
-                          className="absolute top-5 left-5 -ml-px h-full w-0.5 bg-border"
-                          aria-hidden="true"
-                        />
-                      )}
-                      <div className="relative flex items-start space-x-3.5">
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card border border-border shadow-sm">
-                          {getActivityIcon(act.activity)}
-                        </div>
-                        <div className="min-w-0 flex-1 pt-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span
-                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${getActivityBadgeClass(
-                                  act.activity
-                                )}`}
-                              >
-                                {act.activity || "ACTION"}
-                              </span>
-                              <p className="text-xs font-medium text-foreground">
-                                {act.details || "Activity performed on the platform"}
-                              </p>
-                            </div>
-                            {act.product && (
-                              <p className="text-xs text-primary font-medium mt-1 flex items-center gap-1">
-                                <Package className="size-3.5" />
-                                {typeof act.product === "object"
-                                  ? act.product.productName
-                                  : act.productName || "Related Item"}
-                              </p>
-                            )}
+
+          {/* Timeline List */}
+          {filteredActivities.length === 0 ? (
+            <div className="py-12 text-center">
+              <Sparkles className="mx-auto size-10 text-muted-foreground/40 mb-3" />
+              <h3 className="text-base font-semibold">No track history found</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                {activeFilter === "ALL"
+                  ? "Actions you perform such as logging in, donating items, or expressing interest will be recorded here."
+                  : `No activity found under category "${activeFilter}".`}
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 flow-root">
+              <ul className="-mb-8">
+                {filteredActivities.map((act: any, idx: number) => {
+                  const isLast = idx === filteredActivities.length - 1;
+                  return (
+                    <li key={act._id || idx}>
+                      <div className="relative pb-8">
+                        {!isLast && (
+                          <span
+                            className="absolute top-5 left-5 -ml-px h-full w-0.5 bg-border"
+                            aria-hidden="true"
+                          />
+                        )}
+                        <div className="relative flex items-start space-x-3.5">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card border border-border shadow-sm">
+                            {getActivityIcon(act.activity)}
                           </div>
-                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                            {formatDate(act.createdAt)}
-                          </span>
+                          <div className="min-w-0 flex-1 pt-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${getActivityBadgeClass(
+                                    act.activity
+                                  )}`}
+                                >
+                                  {act.activity || "ACTION"}
+                                </span>
+                                <p className="text-xs font-medium text-foreground">
+                                  {act.details || "Activity performed on the platform"}
+                                </p>
+                              </div>
+                              {act.product && (
+                                <p className="text-xs text-primary font-medium mt-1 flex items-center gap-1">
+                                  <Package className="size-3.5" />
+                                  {typeof act.product === "object"
+                                    ? act.product.productName
+                                    : act.productName || "Related Item"}
+                                </p>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                              {formatDate(act.createdAt)}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
-      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

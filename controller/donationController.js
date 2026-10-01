@@ -39,11 +39,17 @@ export const getMyDonations = async (req, res) => {
       return responseManager.error(res, 401, "User authentication required");
     }
 
-    const products = await Product.find({ addedBy: userId })
-      .populate("interestedUsers.user", "username mail")
-      .populate("givenTo", "username")
-      .sort({ createdAt: -1 })
-      .lean();
+    let products = [];
+    try {
+      products = await Product.find({ addedBy: userId })
+        .populate("interestedUsers.user", "username mail")
+        .populate("givenTo", "username")
+        .sort({ createdAt: -1 })
+        .lean();
+    } catch (findErr) {
+      console.warn("Product.find with populate failed, falling back to simple find:", findErr);
+      products = await Product.find({ addedBy: userId }).sort({ createdAt: -1 }).lean();
+    }
 
     let productRatings = [];
     try {
@@ -51,7 +57,6 @@ export const getMyDonations = async (req, res) => {
       if (productIds.length > 0) {
         productRatings = await Rating.find({
           product: { $in: productIds },
-          user: { $ne: userId },
         })
           .populate("user", "username")
           .lean();
@@ -63,7 +68,8 @@ export const getMyDonations = async (req, res) => {
     const productsWithRatings = (products || []).map((product) => {
       const pId = (product._id || product.id || "").toString();
       const matching = (productRatings || []).filter((r) => {
-        const rProdId = (r.product?._id || r.product || "").toString();
+        if (!r || !r.product) return false;
+        const rProdId = (r.product._id || r.product || "").toString();
         return rProdId && rProdId === pId;
       });
       const embedded = Array.isArray(product.ratings) ? product.ratings : [];
@@ -81,6 +87,7 @@ export const getMyDonations = async (req, res) => {
       "My donations loaded successfully",
       {
         products: productsWithRatings,
+        donations: productsWithRatings,
         totalDonations: productsWithRatings.length,
       }
     );

@@ -76,8 +76,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (freshUser) {
         const normalized = normalizeUser(freshUser);
-        setUser(normalized);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+        setUser((prev) => {
+          if (
+            prev &&
+            prev.id === normalized.id &&
+            prev.username === normalized.username &&
+            prev.mail === normalized.mail &&
+            prev.role === normalized.role &&
+            prev.address === normalized.address
+          ) {
+            return prev;
+          }
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+          return normalized;
+        });
       } else if (res && res.status === 401) {
         // Only clear if server explicitly confirms token is expired / unauthorized
         persist(null);

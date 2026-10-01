@@ -16,6 +16,7 @@ import { Route as DonateRouteImport } from './routes/donate'
 import { Route as DonationsRouteImport } from './routes/donations'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MydonationsRouteImport } from './routes/mydonations'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as RequestsRouteImport } from './routes/requests'
@@ -57,6 +58,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MydonationsRoute = MydonationsRouteImport.update({
+  id: '/mydonations',
+  path: '/mydonations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/donations': typeof DonationsRoute
   '/feedback': typeof FeedbackRoute
   '/login': typeof LoginRoute
+  '/mydonations': typeof MydonationsRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/requests': typeof RequestsRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/donations': typeof DonationsRoute
   '/feedback': typeof FeedbackRoute
   '/login': typeof LoginRoute
+  '/mydonations': typeof MydonationsRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/requests': typeof RequestsRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/donations': typeof DonationsRoute
   '/feedback': typeof FeedbackRoute
   '/login': typeof LoginRoute
+  '/mydonations': typeof MydonationsRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/requests': typeof RequestsRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/donations'
     | '/feedback'
     | '/login'
+    | '/mydonations'
     | '/profile'
     | '/register'
     | '/requests'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/donations'
     | '/feedback'
     | '/login'
+    | '/mydonations'
     | '/profile'
     | '/register'
     | '/requests'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/donations'
     | '/feedback'
     | '/login'
+    | '/mydonations'
     | '/profile'
     | '/register'
     | '/requests'
@@ -179,6 +191,7 @@ export interface RootRouteChildren {
   DonationsRoute: typeof DonationsRoute
   FeedbackRoute: typeof FeedbackRoute
   LoginRoute: typeof LoginRoute
+  MydonationsRoute: typeof MydonationsRoute
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
   RequestsRoute: typeof RequestsRoute
@@ -237,6 +250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mydonations': {
+      id: '/mydonations'
+      path: '/mydonations'
+      fullPath: '/mydonations'
+      preLoaderRoute: typeof MydonationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
@@ -283,6 +303,7 @@ const rootRouteChildren: RootRouteChildren = {
   DonationsRoute: DonationsRoute,
   FeedbackRoute: FeedbackRoute,
   LoginRoute: LoginRoute,
+  MydonationsRoute: MydonationsRoute,
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
   RequestsRoute: RequestsRoute,

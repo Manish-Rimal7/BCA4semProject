@@ -22,9 +22,32 @@ router.get("/", (req, res, next) => {
         req.query.mine === "true" ||
         req.baseUrl.toLowerCase().includes("mydonations")
     ) {
-        return credential(req, res, () => getMyDonations(req, res));
+        return credential(req, res, (err) => {
+            if (err) return next(err);
+            return getMyDonations(req, res, next);
+        });
     }
-    return optionalCredential(req, res, () => getAllDonations(req, res));
+    return optionalCredential(req, res, (err) => {
+        if (err) return next(err);
+        return getAllDonations(req, res, next);
+    });
+});
+
+router.get("/api", (req, res, next) => {
+    if (
+        req.query.my === "true" ||
+        req.query.mine === "true" ||
+        req.baseUrl.toLowerCase().includes("mydonations")
+    ) {
+        return credential(req, res, (err) => {
+            if (err) return next(err);
+            return getMyDonations(req, res, next);
+        });
+    }
+    return optionalCredential(req, res, (err) => {
+        if (err) return next(err);
+        return getAllDonations(req, res, next);
+    });
 });
 
 export default router;
