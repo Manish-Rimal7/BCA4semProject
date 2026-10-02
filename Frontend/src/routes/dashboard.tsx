@@ -42,7 +42,7 @@ function UserDashboardPage() {
   const { user } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [mainTab, setMainTab] = useState<"donations" | "history">("donations");
+  const [mainTab, setMainTab] = useState<"history" | "donations">("history");
   const [activeFilter, setActiveFilter] = useState<string>("ALL");
 
   const handleDonationStatsChange = useCallback(

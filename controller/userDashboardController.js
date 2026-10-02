@@ -9,7 +9,7 @@ export const Dashboard = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    const [user, activities, totalDonated, totalGiven, totalRequested, myRatings, donations] =
+    const [user, activities, totalDonated, totalGiven, totalRequested, myRatings] =
       await Promise.all([
         User.findById(userId).select("-password").lean(),
         Activity.find({ user: userId })
@@ -22,11 +22,6 @@ export const Dashboard = async (req, res) => {
         Rating.find({ user: userId })
           .populate("product", "productName UUID")
           .lean(),
-        Product.find({ addedBy: userId })
-          .populate("interestedUsers.user", "username mail")
-          .populate("givenTo", "username")
-          .sort({ createdAt: -1 })
-          .lean(),
       ]);
 
     return responseManager.success(
@@ -36,8 +31,6 @@ export const Dashboard = async (req, res) => {
       {
         user,
         activities,
-        donations: donations || [],
-        products: donations || [],
         stats: {
           totalDonated,
           totalGiven,

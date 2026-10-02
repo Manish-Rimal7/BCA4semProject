@@ -3,7 +3,6 @@ import Rating from "../model/ratings.js";
 import User from "../model/userData.js";
 import { responseManager } from "../middleware/responseManager.js";
 
-// GET /api/donations - All community donation listings
 export const getAllDonations = async (req, res) => {
   try {
     const filter = { isApproved: true };
@@ -31,7 +30,6 @@ export const getAllDonations = async (req, res) => {
   }
 };
 
-// GET /api/donations/myDonations - User's own donations
 export const getMyDonations = async (req, res) => {
   try {
     const userId = req.user?._id || req.user?.id;
@@ -86,7 +84,6 @@ export const getMyDonations = async (req, res) => {
       200,
       "My donations loaded successfully",
       {
-        products: productsWithRatings,
         donations: productsWithRatings,
         totalDonations: productsWithRatings.length,
       }
@@ -96,3 +93,4 @@ export const getMyDonations = async (req, res) => {
     return responseManager.error(res, 500, error.message || "Unable to load my donations");
   }
 };
+

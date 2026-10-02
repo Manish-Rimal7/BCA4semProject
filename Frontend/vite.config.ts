@@ -98,7 +98,6 @@ export default defineConfig({
                     responseCode: 200,
                     responseMessage: "My donations loaded successfully",
                     responseData: {
-                      products: userDonations,
                       donations: userDonations,
                       totalDonations: userDonations.length,
                     },
