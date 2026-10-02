@@ -33,12 +33,20 @@ export default defineConfig({
                 });
 
                 if (upstreamRes.ok) {
-                  const data = await upstreamRes.text();
-                  res.writeHead(upstreamRes.status, {
-                    "Content-Type": "application/json",
-                  });
-                  res.end(data);
-                  return;
+                  try {
+                    const data = await upstreamRes.json();
+                    if (data && data.responseData) {
+                      // Remove redundant products key so only donations is returned
+                      delete data.responseData.products;
+                      res.writeHead(upstreamRes.status, {
+                        "Content-Type": "application/json",
+                      });
+                      res.end(JSON.stringify(data));
+                      return;
+                    }
+                  } catch {
+                    // if parsing fails, proceed to fallback
+                  }
                 }
 
                 // 2. If upstream returned error (e.g. older docker container before Jenkins build), resolve user's own items cleanly
